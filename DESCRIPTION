@@ -1,0 +1,21 @@
+Package: ecoTemporalNet
+Title: Tools for Time-Oriented Ecological Networks
+Version: 0.1.0
+Authors@R: person("Aji", "John", email = "ajijohn@uw.edu", role = c("aut", "cre"))
+Description: Functions to create, analyze, and visualize temporal ecological networks.
+License: MIT
+Encoding: UTF-8
+Imports:
+    igraph,
+    networkDynamic,
+    ndtv,
+    tsna,
+    dplyr,
+    ggplot2
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+RoxygenNote: 7.3.2

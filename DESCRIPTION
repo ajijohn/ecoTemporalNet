@@ -1,21 +1,22 @@
 Package: ecoTemporalNet
-Title: Tools for Time-Oriented Ecological Networks
+Type: Package
+Title: Foundational package for temporal networks in Ecology
 Version: 0.1.0
-Authors@R: person("Aji", "John", email = "ajijohn@uw.edu", role = c("aut", "cre"))
-Description: Functions to create, analyze, and visualize temporal ecological networks.
-License: MIT
+Author: Aji John <you@example.com>
+Maintainer: Aji John <you@example.com>
+Description: Temporal networks in Ecology
+License: MIT + file LICENCE
 Encoding: UTF-8
+LazyData: true
 Imports:
-    igraph,
-    networkDynamic,
-    ndtv,
-    tsna,
     dplyr,
-    ggplot2
+    igraph,
+    networkDynamic
+RoxygenNote: 7.3.2
 Suggests:
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
-Config/testthat/edition: 3
+    rmarkdown,
+    usethis
 VignetteBuilder: knitr
-RoxygenNote: 7.3.2
+Config/testthat/edition: 3

@@ -25,14 +25,14 @@ test_that("Simple burstiness", {
   # 2) Simple burstiness (Goh & Barabási 2008)
   m  <- mean(durations)     # 2.5
   s  <- sd(durations)       # ≈0.7071068
-  B_simple <- (s - m)/(s + m)
+  expected_B_simple <- (s - m)/(s + m)
   # ≈ (0.7071 - 2.5) / (0.7071 + 2.5) ≈ -0.5589
 
   # Generic calculation
   species_data_ordered <- species_data[order(species_data$start_day), ]
   durations_m2 <- species_data_ordered$start_day[-1] - species_data_ordered$end_day[-nrow(species_data_ordered)]
   #compare it with function
-  burst_sim <- burstiness_simple(durations_m2)
+  B_simple <- burstiness_simple(durations_m2)
 
-  expect_equal(B_simple, burst_sim)
+  expect_equal(B_simple, expected_B_simple)
 })

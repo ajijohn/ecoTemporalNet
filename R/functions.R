@@ -152,7 +152,7 @@ calculate_betweenness <- function(g, shortest_paths_matrix) {
 #' @export
 inter_event_times <- function(species_data) {
   species_data_iet <- species_data %>%
-  arrange(start_day) %>%  # Ensure species are ordered by start day
+  dplyr::arrange(start_day) %>%  # Ensure species are ordered by start day
   dplyr::mutate(
     inter_event_time = abs(lead(start_day) - end_day)  # Calculate the time difference (assumin days)
   )

@@ -152,8 +152,8 @@ calculate_betweenness <- function(g, shortest_paths_matrix) {
 #' @export
 inter_event_times <- function(species_data) {
   species_data_iet <- species_data %>%
-  arrange(start_day) %>%  # Ensure species are ordered by start day
-  mutate(
+  dplyr::arrange(start_day) %>%  # Ensure species are ordered by start day
+  dplyr::mutate(
     inter_event_time = abs(lead(start_day) - end_day)  # Calculate the time difference (assumin days)
   )
 return(species_data_iet)
@@ -208,4 +208,63 @@ calculate_burstiness <- function(species_data) {
   burstiness <- (sigma_tau / m_tau - 1) / (sigma_tau / m_tau + 1)
 
   return(burstiness)
+}
+
+#’ Compute inter‐event durations from sorted event times
+#’ @param times Numeric vector of event times (will be sorted)
+#’ @return Numeric vector of inter‐event durations
+#' @export
+interevent_durations <- function(times) {
+  t <- sort(as.numeric(times))
+  diff(t)
+}
+
+
+#’ Simple burstiness (Goh & Barabási, 2008)
+#’
+#’ B = (σ – μ) / (σ + μ)
+#’ @param ied Numeric vector of inter‐event durations
+#’ @return Numeric scalar in [–1,1]
+#' @export
+burstiness_simple <- function(ied) {
+  m <- mean(ied)
+  s <- stats::sd(ied)
+  # degenerate: all intervals zero
+  if (m + s == 0) return(1)
+  (s - m) / (s + m)
+}
+
+
+
+#’ Finite‐size burstiness, unbounded case (Eq. 22, Kim & Jo 2016)
+#’
+#’ Aₙ(r) = [√(n+1)·r − √(n−1)] / [r·(√(n+1)−2) + √(n−1)]
+#’ where r = CV = σ/μ
+#’ @param ied Numeric vector of inter‐event durations
+#’ @return Numeric scalar in [–1,1]
+#' @export
+burstiness_eq22 <- function(ied) {
+  m <- mean(ied)
+  s <- stats::sd(ied)
+  if (m == 0 && s == 0) return(1)
+  stopifnot(m != 0)
+  cv <- s / m
+  n  <- length(ied) + 1
+  a <- sqrt(n + 1) * cv - sqrt(n - 1)
+  b <- cv * (sqrt(n + 1) - 2) + sqrt(n - 1)
+  a / b
+}
+
+
+#’ Memory metric (lag‐1 correlation of inter‐event times, scaled)
+#’
+#’ m = r₁ / (n−2), where r₁ = corr(ied₁…n−2, ied₂…n−1)
+#’ @param times Numeric vector of event times
+#’ @return Numeric scalar in [–1,1] or NA if too few events
+#' @export
+memory <- function(times) {
+  ied <- interevent_durations(times)
+  if (length(ied) < 2) return(NA_real_)
+  r1 <- stats::cor(ied[-length(ied)], ied[-1])
+  r1 / (length(ied) - 1)
 }

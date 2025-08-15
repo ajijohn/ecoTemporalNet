@@ -11,7 +11,8 @@ check_temporal_overlap <- function(species_data) {
 
       # Check if there is a temporal overlap between species i and j
       # The overlap condition is if one species ends after the other starts
-      if (species_i$end_day >= species_j$start_day && species_i$start_day <= species_j$end_day) {
+      if (species_i$end_day >= species_j$start_day &&
+          species_i$start_day <= species_j$end_day) {
         overlap_start <- max(species_i$start_day, species_j$start_day)
         overlap_end <- min(species_i$end_day, species_j$end_day)
         overlap_duration <- overlap_end - overlap_start + 1  # Calculate overlap duration in days
@@ -506,4 +507,47 @@ calculate_avg_closeness <- function(g) {
                                       normalized = FALSE)
 
   mean(closeness_vals)
+}
+
+
+#' Calculate upstream and downstream reachability sets for each node
+#'
+#' For each species (node), computes the number of other species it can reach
+#' (downstream set) and the number of species that can reach it (upstream set)
+#' via time-respecting paths in a directed co-flowering network.
+#'
+#' @param g A directed igraph object from `create_temporal_network()`, with time-respecting edge direction
+#'
+#' @return A data.frame with species name, upstream size, and downstream size
+#'
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 3, 6),
+#'   end_day = c(5, 7, 9)
+#' )
+#' g <- create_temporal_network(species_data)  # assuming edge direction is time-respecting
+#' calculate_temporal_reachability(g)
+#'
+#' @export
+calculate_temporal_reachability <- function(g) {
+  if (igraph::vcount(g) == 0) {
+    return(data.frame(species = character(), upstream = integer(), downstream = integer()))
+  }
+
+  species <- igraph::V(g)$name
+
+  downstream_sizes <- sapply(species, function(sp) {
+    length(igraph::subcomponent(g, sp, mode = "out")) - 1  # exclude self
+  })
+
+  upstream_sizes <- sapply(species, function(sp) {
+    length(igraph::subcomponent(g, sp, mode = "in")) - 1  # exclude self
+  })
+
+  data.frame(
+    species = species,
+    upstream = upstream_sizes,
+    downstream = downstream_sizes
+  )
 }

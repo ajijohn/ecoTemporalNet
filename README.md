@@ -66,25 +66,41 @@ burst_value <- calculate_burstiness(species_data)
 
 ---
 
-## Core Functions
+## Key Functions
 
-- **`check_temporal_overlap(species_data)`**  
-  Detects all pairwise flowering overlaps and returns edges and inclusive overlap durations.
+| Function | Description |
+|----------|-------------|
+| `check_temporal_overlap()` | Identifies overlap between flowering windows (inclusive) |
+| `create_temporal_network()` | Builds a **directed** temporal network where edges represent overlap |
+| `calculate_latency()` | Shortest path latency matrix (weighted by 1/overlap duration) |
+| `calculate_memory_with_latency()` | Memory index using weighted correlation by path latency |
+| `calculate_burstiness()` | Calculates burstiness of phenological durations |
+| `calculate_avg_temporal_degree()` | Average **undirected** node degree (coflowering richness) |
+| `calculate_avg_temporal_network_degree()` | Average **directed** degree (in + out edges per node) |
+| `calculate_avg_betweenness()` | Average betweenness centrality weighted by overlap |
+| `calculate_avg_closeness()` | Average closeness centrality weighted by overlap |
+| `calculate_temporal_reachability()` | Returns upstream and downstream sets for each node |
+| `calculate_persistence_metrics()` | Returns node and edge persistence (in days) |
 
-- **`inter_event_times(species_data)`**  
-  Calculates the gap (in days) between the end of one species’ event and the start of the next.
+---
 
-- **`create_temporal_network(species_data)`**  
-  Builds an **igraph** network with edge weights as overlap durations.
+## Metric Definitions
 
-- **`calculate_latency(g)`**  
-  Computes a latency matrix of weighted shortest‐path distances using overlap durations.
+### Temporal Degree
+- **Undirected**: mean number of coflowering partners
+- **Directed**: mean (in + out) degree across all nodes
 
-- **`calculate_memory_with_latency(species_data, latency_matrix)`**  
-  Computes a memory metric (lagged correlation) weighted by a latency matrix.
+### Centrality
+- **Betweenness**: how often species bridge between others
+- **Closeness**: how easily a species can reach or be reached
 
-- **`calculate_burstiness(species_data)`**  
-  Returns the burstiness index of inter‐event times.
+### Reachability
+- **Upstream set**: species that can reach a given node
+- **Downstream set**: species that a node can reach forward in time
+
+### Persistence
+- **Node persistence**: average flowering duration per species
+- **Edge persistence**: average coflowering duration across all links
 
 ---
 
@@ -127,3 +143,11 @@ devtools::build_vignettes()
 ## License
 
 MIT &mdash; see the [LICENSE](LICENSE) file for details.
+
+---
+
+## About
+
+**ecoTemporalNet** enables ecologists to quantify phenological synchrony and fragmentation using time-respecting network analysis. Designed for applications in climate change ecology, alpine phenology, and pollinator dynamics.
+
+---

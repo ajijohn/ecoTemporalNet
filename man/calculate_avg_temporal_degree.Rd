@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{calculate_avg_temporal_degree}
 \alias{calculate_avg_temporal_degree}
-\title{Compute average temporal degree (mean number of co-flowering partners)}
+\title{Compute average temporal degree undirected (mean number of co-flowering partners, symmetric overlaps)}
 \usage{
 calculate_avg_temporal_degree(g)
 }
@@ -13,7 +13,7 @@ calculate_avg_temporal_degree(g)
 Numeric: average degree across all nodes
 }
 \description{
-Compute average temporal degree (mean number of co-flowering partners)
+Compute average temporal degree undirected (mean number of co-flowering partners, symmetric overlaps)
 }
 \section{Interpretation}{
 

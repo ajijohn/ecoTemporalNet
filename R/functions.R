@@ -353,7 +353,7 @@ calculate_persistence_metrics <- function(g, species_data) {
   ))
 }
 
-#' Compute average temporal degree (mean number of co-flowering partners)
+#' Compute average temporal degree undirected (mean number of co-flowering partners, symmetric overlaps)
 #'
 #' @param g An igraph object from create_temporal_network()
 #' @return Numeric: average degree across all nodes
@@ -374,6 +374,22 @@ calculate_avg_temporal_degree <- function(g) {
   deg <- igraph::degree(g_undirected)
 
   return(mean(deg))
+}
+
+#' Calculate average total degree (in + out) in a directed network
+#'
+#' @param g A directed igraph object
+#' @return Numeric: average number of edges (in + out) per node
+#' @export
+calculate_avg_temporal_network_degree <- function(g) {
+  if (igraph::vcount(g) == 0) return(NA)
+
+  in_deg <- igraph::degree(g, mode = "in")
+  out_deg <- igraph::degree(g, mode = "out")
+
+  total_deg <- in_deg + out_deg
+
+  mean(total_deg)
 }
 
 #' Calculate temporal degree of each node (species)

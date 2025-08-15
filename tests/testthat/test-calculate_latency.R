@@ -1,6 +1,6 @@
 library(testthat)
 library(ecoTemporalNet)
-
+library(igraph)
 test_that("calculate_latency uses inclusive overlap durations for shortest paths", {
   # Species windows:
   #   A: days 1–5, B: days 3–7, C: days 6–9

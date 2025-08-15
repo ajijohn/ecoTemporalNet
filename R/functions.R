@@ -268,3 +268,50 @@ memory <- function(times) {
   r1 <- stats::cor(ied[-length(ied)], ied[-1])
   r1 / (length(ied) - 1)
 }
+
+#’ Build co-occurrence table by day
+#’
+#’ @param species A data.frame of nodes
+#’ @return Day matrix
+#' @export
+get_daywise_overlap <- function(species_data) {
+  # Create a list of days for each species
+  species_days <- lapply(1:nrow(species_data), function(i) {
+    seq(species_data$start_day[i], species_data$end_day[i])
+  })
+  names(species_days) <- species_data$species
+
+  # Build a day × species presence matrix
+  all_days <- unique(unlist(species_days))
+  day_matrix <- matrix(0, nrow = length(all_days), ncol = nrow(species_data),
+                       dimnames = list(all_days, species_data$species))
+
+  for (i in seq_along(species_days)) {
+    days <- as.character(species_days[[i]])
+    day_matrix[days, i] <- 1
+  }
+
+  return(day_matrix)
+}
+
+#’ For each species, calculate % of its flowering days spent coflowering
+#’
+#’ @param Day matrix
+#’ @return dataframe of species and prop. of persistence
+#' @export
+calculate_prop_edge_persistence <- function(day_matrix) {
+  species <- colnames(day_matrix)
+  result <- data.frame(species = species, prop_with_neighbors = NA)
+
+  for (sp in species) {
+    flowering_days <- which(day_matrix[, sp] == 1)
+    coflower_days <- sapply(flowering_days, function(day_idx) {
+      coflowering <- sum(day_matrix[day_idx, ]) > 1  # at least one neighbor
+      return(coflowering)
+    })
+    prop <- sum(coflower_days) / length(flowering_days)
+    result[result$species == sp, "prop_edge_persistency"] <- prop
+  }
+
+  return(result)
+}

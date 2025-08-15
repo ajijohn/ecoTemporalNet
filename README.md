@@ -31,6 +31,7 @@ devtools::install_local("ecoTemporalNet_0.1.0.tar.gz")
 
 ```r
 library(ecoTemporalNet)
+library(igraph)
 
 # Define your species flowering windows
 species_data <- data.frame(
@@ -49,7 +50,7 @@ weights <- overlap_result$weights
 g <- create_temporal_network(species_data)
 
 # 3. Compute latency (shortest‐path matrix)
-latency_mat <- calculate_latency(g)
+latency_mat <-g calculate_latency(g)
 
 # 4. Calculate memory adjusted by a latency matrix
 #    (here: simple toy latency for demonstration)

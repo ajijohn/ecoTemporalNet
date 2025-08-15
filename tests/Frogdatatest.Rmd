@@ -1,0 +1,182 @@
+---
+title: "TestEccoTemporalNetFrog"
+author: "Volker Rudolf"
+date: "2025-07-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Get our package from github
+```{r}
+devtools::build()
+devtools::install_local("ecoTemporalNet_0.1.0.tar.gz")
+
+```
+
+Install packages
+```{r}
+library(ecoTemporalNet)
+library(igraph)
+library(tidyverse)
+library(testthat)
+
+```
+
+Load our frog data to test the functions
+```{r}
+pond1c14<-read_csv("frogcomtest1.csv")
+pond4c5<-read_csv("frogcomtest2.csv")
+pond4c15<-read_csv("frogcomtest3.csv")
+head(pond1c14)
+
+#plot phenology, note we add little extra to so we can see single day occurrences
+ggplot(pond1c14, aes(x = start_day, xend = end_day+0.5, y = reorder(factor(species),-start_day), yend = factor(species))) +
+  geom_segment(linewidth = 10) +
+  theme_minimal() +
+  labs(x = "Day", y = "Species") +
+  theme_classic()
+
+ggplot(pond4c5, aes(x = start_day, xend = end_day+0.5, y = reorder(factor(species),-start_day), yend = factor(species))) +
+  geom_segment(linewidth = 10) +
+  theme_minimal() +
+  labs(x = "Day", y = "Species") +
+  theme_classic()
+
+ggplot(pond4c15, aes(x = start_day, xend = end_day+0.5, y = reorder(factor(species),-start_day), yend = factor(species))) +
+  geom_segment(linewidth = 10) +
+  theme_minimal() +
+  labs(x = "Day", y = "Species") +
+  theme_classic()
+
+```
+so pond4c15 has only 4 species andone emporally isolated, the other two have 8 species with different complicated patterns
+
+# test overlap function
+```{r}
+overlap <- check_temporal_overlap(pond4c5)
+edges  <- overlap$edges
+weights <- overlap$weights
+
+knitr::kable(
+  data.frame(
+    from = edges[,1],
+    to   = edges[,2],
+    overlap_days = weights
+  ),
+  caption = "Directed edges and overlap durations"
+)
+
+```
+so what we get is overlap for each time species have an overlap
+
+
+# 3. Build the Network
+
+```{r build-network}
+g1 <- ecoTemporalNet::create_temporal_network(pond1c14)
+#note if I did not specify that this is from ecoTemporalNet I get error message
+# Inspect the graph
+g2 <- ecoTemporalNet::create_temporal_network(pond4c5)
+
+g3 <- ecoTemporalNet::create_temporal_network(pond4c15)
+
+```
+
+# 4. Visualize the Network
+
+```{r plot-network, fig.width=6, fig.height=6}
+plot(
+  g1,
+  vertex.label = V(g1)$name,
+  edge.width   = E(g1)$weight / 5,  # scale widths for readability
+  main         = "Temporal Ecological Network"
+)
+plot(
+  g2,
+  vertex.label = V(g2)$name,
+  edge.width   = E(g2)$weight / 5,  # scale widths for readability
+  main         = "Temporal Ecological Network"
+)
+
+plot(
+  g3,
+  vertex.label = V(g3)$name,
+  edge.width   = E(g3)$weight / 5,  # scale widths for readability
+  main         = "Temporal Ecological Network"
+)
+```
+so after fixing my code mistakes, this looks ok.
+
+#edge persistence
+```{r}
+calculate_edge_persistence(pond1c14)
+calculate_edge_persistence(pond4c5)
+calculate_edge_persistence(pond4c15)
+
+```
+since there are multiple times an edge persists it seems to get each one
+
+
+#shortest path
+```{r}
+shortPathg1<-calculate_shortest_paths(g1)
+shortPathg2<-calculate_shortest_paths(g2)
+shortPathg3<-calculate_shortest_paths(g3)
+
+shortPathg1
+shortPathg2 #this one has disconnected species and you get infinity for shortest paths
+shortPathg3
+```
+Some observations: first is this smallest number of steps (fewest nodes to traverse) vs fastest (fastest, shorest duration to get to a node), 
+this is apparently using "all" (so forward and backward), but really should differentiate between forward and backward
+it's not clear if the shortest path is going forward or backwards here.
+Some show a shortest path when it should not exist: e.g. g1, RCA should not be able to reach PC PT BW BW since they only occur earlier. So there is an upstream path to RCA, but not from RCA to these species
+Not sure I fully understand  path length either, BW can reach RCA via RS, seems like that should be 2 but it is listed as 3, same for PC to AC (can reach it via RS-AC), but in that case it's 3, which is the earliest it can reach it (via RS-HV-AC)
+
+#distance
+not sure how this differs from shortest path, seems like same numbers
+```{r}
+calculate_distance(g1)
+calculate_distance(g2)
+calculate_distance(g3)
+
+```
+
+
+#inter-event times
+```{r}
+inter_event_times(pond1c14)
+inter_event_times(pond4c5)
+inter_event_times(pond4c15)
+
+```
+#latency
+```{r}
+calculate_latency(g1)
+calculate_latency(g2)
+calculate_latency(g3)
+```
+So issue here is that we get infinity values which make sense for disconnected nodes
+The length also doesn't make sense and most numbers are to low, say we go from PT to AC. There is no direct connection, shortest temporal path is: PT-RS day 76, RS-HV day 126, and HV-AC day 128. So its 76-128 days= 52 days. So all the 
+
+
+#burstiness
+```{r}
+calculate_burstiness(pond1c14)
+calculate_burstiness(pond4c5)
+calculate_burstiness(pond41c15)
+```
+
+
+# memory and latency
+not sure what the metric is exactly... but function doesnt seem to work even with test species_data
+```{r}
+calculate_memory_with_latency(pond1c14)
+calculate_memory_with_latency(pond4c5)
+calculate_memory_with_latency(pond4c15)
+
+```
+

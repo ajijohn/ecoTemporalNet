@@ -315,3 +315,195 @@ calculate_prop_edge_persistence <- function(day_matrix) {
 
   return(result)
 }
+
+#' Compute average node and edge persistence from the network
+#'
+#' @param g An igraph object created from `create_temporal_network`
+#' @param species_data The original data.frame with species, start_day, and end_day
+#' @return A data.frame with two metrics
+#' @export
+calculate_persistence_metrics <- function(g, species_data) {
+  # Handle empty networks
+  if (igraph::vcount(g) == 0) {
+    return(data.frame(
+      avg_node_persistence = NA,
+      avg_edge_persistence = NA
+    ))
+  }
+
+  # Ensure species names match between graph and data
+  nodes <- igraph::V(g)$name
+  node_durations <- species_data |>
+    dplyr::filter(species %in% nodes) |>
+    dplyr::mutate(duration = end_day - start_day + 1)
+
+  avg_node_persistence <- mean(node_durations$duration)
+
+  # Convert to undirected to reflect mutual overlap
+  g_undirected <- igraph::as_undirected(g, mode = "collapse", edge.attr.comb = "sum")
+
+  avg_edge_persistence <- if (igraph::ecount(g_undirected) == 0) NA else mean(igraph::E(g_undirected)$weight)
+
+  return(data.frame(
+    avg_node_persistence = avg_node_persistence,
+    avg_edge_persistence = avg_edge_persistence
+  ))
+}
+
+#' Compute average temporal degree (mean number of co-flowering partners)
+#'
+#' @param g An igraph object from create_temporal_network()
+#' @return Numeric: average degree across all nodes
+#' @section Interpretation:
+#' \describe{
+#'   \item{0}{No coflowering — fully isolated species}
+#'   \item{1–2}{Species overlap with 1–2 others on average}
+#'   \item{High}{Dense synchrony — many co-flowering partners}
+#' }
+#' @export
+calculate_avg_temporal_degree <- function(g) {
+  if (igraph::vcount(g) == 0) return(NA)
+
+  # Treat the graph as undirected since coflowering is symmetric
+  g_undirected <- igraph::as_undirected(g, mode = "collapse", edge.attr.comb = "sum")
+
+  # Compute degree for all nodes
+  deg <- igraph::degree(g_undirected)
+
+  return(mean(deg))
+}
+
+#' Calculate temporal degree of each node (species)
+#'
+#' Computes the number of overlapping flowering partners per species in a phenological network.
+#' In an undirected network, this corresponds to the total number of species a node co-flowers with.
+#' In a directed network, in-degree and out-degree can reflect upstream/downstream relationships based on flowering order.
+#'
+#' @param g An igraph object created with `create_temporal_network()`
+#' @param mode Character. One of "total" (default), "in", or "out".
+#'   - "total": treats network as undirected (collapses direction)
+#'   - "in": counts incoming edges only (e.g., overlapping with species that flower later)
+#'   - "out": counts outgoing edges only (e.g., overlapping with species that flower earlier)
+#'
+#' @return A data.frame with:
+#'   - species: node name
+#'   - degree: number of connected overlapping edges
+#'
+#' @section Interpretation:
+#' \describe{
+#'   \item{0}{Species does not coflower with any other species}
+#'   \item{1–2}{Species overlaps with a few others during its phenophase}
+#'   \item{High (>5)}{Species overlaps with many others — strong synchrony}
+#'   \item{"in" vs "out"}{May indicate if a species tends to flower earlier or later relative to its neighbors}
+#' }
+#'
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 3, 6),
+#'   end_day = c(5, 7, 9)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_node_temporal_degree(g, mode = "total")
+#'
+#' @export
+calculate_node_temporal_degree <- function(g, mode = "total") {
+  if (igraph::vcount(g) == 0) {
+    return(data.frame(species = character(), degree = numeric()))
+  }
+
+  if (mode == "total") {
+    g2 <- igraph::as_undirected(g, mode = "collapse", edge.attr.comb = "sum")
+    deg <- igraph::degree(g2)
+  } else {
+    deg <- igraph::degree(g, mode = mode)
+  }
+
+  data.frame(species = names(deg), degree = deg)
+}
+
+
+#' Calculate average time-dependent betweenness centrality
+#'
+#' Computes the mean betweenness centrality across all nodes in a co-flowering network.
+#' Betweenness centrality measures how often a node lies on the shortest paths between other nodes,
+#' indicating its role as a temporal bridge or connector between species that otherwise do not co-flower directly.
+#'
+#' The function assumes that species with longer overlap (higher edge weight) are more strongly connected.
+#' To prioritize such overlaps, the function inverts weights (i.e., 1/weight) for shortest path calculations.
+#'
+#' @param g An igraph object created using `create_temporal_network()`
+#'
+#' @return A numeric value: average betweenness centrality across all nodes in the (undirected) network
+#'
+#' @section Interpretation:
+#' \describe{
+#'   \item{0}{No node acts as a bridge — all paths are direct or disconnected}
+#'   \item{Low (~0.1–0.5)}{Some species act as connectors between clusters, but many are peripheral}
+#'   \item{High (>1)}{One or more species serve as important bridges — linking phenological modules or stages}
+#' }
+#'
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 3, 6),
+#'   end_day = c(5, 7, 9)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_avg_betweenness(g)
+#'
+#' @export
+calculate_avg_betweenness <- function(g) {
+  if (igraph::vcount(g) == 0) return(NA)
+
+  g_undirected <- igraph::as.undirected(g, mode = "collapse", edge.attr.comb = "sum")
+
+  # Invert weights: high overlap = shorter path
+  btwn <- igraph::betweenness(g_undirected,
+                              weights = 1 / igraph::E(g_undirected)$weight,
+                              normalized = FALSE)
+
+  mean(btwn)
+}
+
+#' Calculate average time-dependent closeness centrality
+#'
+#' Computes the mean closeness centrality across all nodes in a co-flowering network.
+#' Closeness centrality reflects how easily a species can reach (or be reached by) others
+#' through overlapping flowering periods.
+#'
+#' The function inverts edge weights (1/weight), treating stronger overlaps as shorter paths.
+#' The graph is treated as undirected to reflect mutual co-flowering.
+#'
+#' @param g An igraph object from `create_temporal_network()`
+#'
+#' @return A numeric value: average closeness centrality across all nodes
+#'
+#' @section Interpretation:
+#' \describe{
+#'   \item{0}{Node is isolated — no access to other species}
+#'   \item{Low}{Species is far from many others — few or weak overlaps}
+#'   \item{High}{Species is close to many others — central in phenological timing}
+#' }
+#'
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 3, 6),
+#'   end_day = c(5, 7, 9)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_avg_closeness(g)
+#'
+#' @export
+calculate_avg_closeness <- function(g) {
+  if (igraph::vcount(g) == 0) return(NA)
+
+  g_undirected <- igraph::as.undirected(g, mode = "collapse", edge.attr.comb = "sum")
+
+  closeness_vals <- igraph::closeness(g_undirected,
+                                      weights = 1 / igraph::E(g_undirected)$weight,
+                                      normalized = FALSE)
+
+  mean(closeness_vals)
+}

@@ -11,8 +11,10 @@ check_temporal_overlap <- function(species_data) {
 
       # Check if there is a temporal overlap between species i and j
       # The overlap condition is if one species ends after the other starts
+      # third condition -  # A → B only if A starts no later than B (Enforce time-respecting direction)
       if (species_i$end_day >= species_j$start_day &&
-          species_i$start_day <= species_j$end_day) {
+          species_i$start_day <= species_j$end_day &&
+          species_i$start_day <= species_j$start_day) {
         overlap_start <- max(species_i$start_day, species_j$start_day)
         overlap_end <- min(species_i$end_day, species_j$end_day)
         overlap_duration <- overlap_end - overlap_start + 1  # Calculate overlap duration in days

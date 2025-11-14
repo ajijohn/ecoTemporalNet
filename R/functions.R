@@ -52,6 +52,7 @@ create_temporal_network <- function(species_data) {
 }
 
 #' Plot a snapshot of the temporal network
+#' @param g temporal graph
 #' @export
 plot_temporal_network <- function(g) {
   # Plot the network with edge weights (temporal overlap in days)
@@ -68,6 +69,7 @@ plot_temporal_network <- function(g) {
 
 
 #' Function to calculate Distance (shortest paths with weights representing overlap duration)
+#'
 #' @export
 calculate_distance_weights <- function(g) {
   distance_matrix <- shortest.paths(g, weights = E(g)$weight)  # Shortest paths with overlap duration as weights
@@ -75,6 +77,7 @@ calculate_distance_weights <- function(g) {
 }
 
 #' Function to calculate Distance (smallest number of nodes, hops, between species)
+#'
 #' @export
 calculate_distance <- function(g) {
   distance_matrix <- shortest.paths(g, v = V(g), mode = "all", weights = NULL)  # Shortest paths (unweighted)
@@ -98,6 +101,7 @@ calculate_shortest_paths <- function(g) {
 }
 
 #' Create a function to calculate edge persistence (pairwise overlap duration)
+#' @param species Species dataframe
 #' @export
 calculate_edge_persistence <- function(species_data) {
   edges <- list()
@@ -125,6 +129,7 @@ calculate_edge_persistence <- function(species_data) {
 }
 
 #' Function to calculate time-dependent betweenness centrality
+#'
 #' @export
 calculate_betweenness <- function(g, shortest_paths_matrix) {
   N <- vcount(g)  # Number of nodes

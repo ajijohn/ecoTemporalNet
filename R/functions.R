@@ -45,8 +45,8 @@ create_temporal_network <- function(species_data) {
   }
 
   # Create the graph (time-ordered network) with weights as edge attributes
-  g <- graph_from_edgelist(edges, directed = TRUE)
-  E(g)$weight <- weights  # Add the weights (overlap duration) to the edges
+  g <- igraph::graph_from_edgelist(edges, directed = TRUE)
+  igraph::E(g)$weight <- weights  # Add the weights (overlap duration) to the edges
 
   return(g)
 }
@@ -162,7 +162,7 @@ inter_event_times <- function(species_data) {
   species_data_iet <- species_data %>%
   dplyr::arrange(start_day) %>%  # Ensure species are ordered by start day
   dplyr::mutate(
-    inter_event_time = abs(lead(start_day) - end_day)  # Calculate the time difference (assumin days)
+    inter_event_time = abs(dplyr::lead(start_day) - end_day)  # Calculate the time difference (assumin days)
   )
 return(species_data_iet)
 }
@@ -196,7 +196,7 @@ calculate_memory_with_latency <- function(species_data) {
 
   # Apply the memory formula with latency consideration (adjust the memory formula by incorporating latency)
   memory_value <- mean((inter_event_times - m1) *
-                         (lead(inter_event_times) - m2) *
+                         (dplyr::lead(inter_event_times) - m2) *
                          latency_matrix[1:(n - 1), 2:n], na.rm = TRUE) / (sigma1 * sigma2)
 
   return(memory_value)

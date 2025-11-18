@@ -6,6 +6,9 @@
 \usage{
 plot_temporal_network(g)
 }
+\arguments{
+\item{g}{temporal graph}
+}
 \description{
 Plot a snapshot of the temporal network
 }

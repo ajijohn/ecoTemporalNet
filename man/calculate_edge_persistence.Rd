@@ -6,6 +6,9 @@
 \usage{
 calculate_edge_persistence(species_data)
 }
+\arguments{
+\item{species}{Species dataframe}
+}
 \description{
 Create a function to calculate edge persistence (pairwise overlap duration)
 }

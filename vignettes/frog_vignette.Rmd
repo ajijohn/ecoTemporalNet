@@ -1,0 +1,85 @@
+---
+title: "Temporal Overlap Networks: Frog Phenology Example"
+author: "Volker Rudolf"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Temporal Overlap Networks: Frog Phenology Example}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+
+library(ecoTemporalNet)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(knitr)
+```
+
+# Overview
+
+This vignette demonstrates how to use `ecoTemporalNet` to build and analyze
+temporal overlap networks from frog phenology data.
+
+# Load Data
+
+```{r}
+frog1 <- readr::read_csv(
+  system.file("extdata", "frogcomtest1.csv", package = "ecoTemporalNet"),
+  show_col_types = FALSE
+)
+
+frog2 <- readr::read_csv(
+  system.file("extdata", "frogcomtest2.csv", package = "ecoTemporalNet"),
+  show_col_types = FALSE
+)
+
+frog3 <- readr::read_csv(
+  system.file("extdata", "frogcomtest3.csv", package = "ecoTemporalNet"),
+  show_col_types = FALSE
+)
+
+knitr::kable(head(frog1))
+```
+
+# Plot Phenology
+
+```{r}
+ggplot(frog1, aes(
+  x = start_day,
+  xend = end_day + 0.5,
+  y = reorder(factor(species), -start_day),
+  yend = factor(species)
+)) +
+  geom_segment(linewidth = 8) +
+  theme_classic()
+```
+
+# Build Network
+
+```{r}
+g1 <- create_temporal_network(frog1)
+plot(g1,
+     vertex.label = igraph::V(g1)$name,
+     edge.width = igraph::E(g1)$weight / 5)
+```
+
+# Metrics
+
+```{r}
+calculate_edge_persistence(frog1)
+calculate_latency(g1)
+calculate_burstiness(frog1)
+calculate_memory_with_latency(frog1)
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

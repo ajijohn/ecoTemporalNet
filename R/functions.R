@@ -300,6 +300,46 @@ calculate_memory_with_latency <- function(species_data) {
   stats::weighted.mean((gap1 - mu1) * (gap2 - mu2), w) / (sd1 * sd2)
 }
 
+#' Calculate burstiness of overlap durations across network edges
+#'
+#' This metric summarizes how variable pairwise overlap durations are among
+#' all overlapping species pairs. It uses the classic burstiness formula:
+#' \deqn{B = (\sigma - \mu) / (\sigma + \mu)}
+#' where \eqn{\mu} is the mean overlap duration and \eqn{\sigma} is the
+#' standard deviation of overlap durations.
+#'
+#' @param species_data A data frame with columns `species`, `start_day`, and `end_day`.
+#'
+#' @return A numeric scalar in [-1, 1], or `NA_real_` if fewer than two
+#'   overlapping pairs exist or if the statistic is undefined.
+#'
+#' @export
+calculate_overlap_burstiness <- function(species_data) {
+  ep <- calculate_edge_persistence(species_data)
+
+  if (is.null(ep) || is.null(ep$persistence)) {
+    return(NA_real_)
+  }
+
+  x <- ep$persistence
+
+  if (length(x) < 2) {
+    return(NA_real_)
+  }
+
+  mu <- mean(x, na.rm = TRUE)
+  sigma <- stats::sd(x, na.rm = TRUE)
+
+  if (!is.finite(mu) || !is.finite(sigma)) {
+    return(NA_real_)
+  }
+
+  if ((mu + sigma) == 0) {
+    return(NA_real_)
+  }
+
+  (sigma - mu) / (sigma + mu)
+}
 
 #' Calculate burstiness (B) from non-negative interval gaps
 #'

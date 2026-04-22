@@ -70,7 +70,7 @@ plot(
 
 # 5. Next Steps
 
-- You can convert this **igraph** object into a **networkDynamic** object if you need time‐slice animations or dynamic edge attributes (with the **networkDynamic** package).
-- Extend `create_temporal_network()` to attach temporal windows to edges for dynamic simulations.
+-   You can convert this **igraph** object into a **networkDynamic** object if you need time‐slice animations or dynamic edge attributes (with the **networkDynamic** package).
+-   Extend `create_temporal_network()` to attach temporal windows to edges for dynamic simulations.
 
----
+------------------------------------------------------------------------

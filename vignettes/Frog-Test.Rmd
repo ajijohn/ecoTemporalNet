@@ -1,0 +1,320 @@
+---
+title: "Temporal Overlap Networks: Frog Example"
+author: "Volker Rudolf"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Temporal Overlap Networks: Frog Example}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r pkg}
+library(ecoTemporalNet)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(knitr)
+```
+
+
+```{r overlap}
+# Compatibility wrappers so the vignette still works if function names changed
+shortest_paths_fn <- function(g) {
+  ns <- asNamespace("ecoTemporalNet")
+  if (exists("calculate_overlap_shortest_paths", envir = ns, inherits = FALSE)) {
+    ecoTemporalNet::calculate_overlap_shortest_paths(g)
+  } else if (exists("calculate_shortest_paths", envir = ns, inherits = FALSE)) {
+    ecoTemporalNet::calculate_shortest_paths(g)
+  } else {
+    stop("No shortest-path function found in ecoTemporalNet.")
+  }
+}
+
+distance_fn <- function(g) {
+  ns <- asNamespace("ecoTemporalNet")
+  if (exists("calculate_overlap_hop_distance", envir = ns, inherits = FALSE)) {
+    ecoTemporalNet::calculate_overlap_hop_distance(g)
+  } else if (exists("calculate_distance", envir = ns, inherits = FALSE)) {
+    ecoTemporalNet::calculate_distance(g)
+  } else {
+    stop("No distance function found in ecoTemporalNet.")
+  }
+}
+
+weighted_distance_fn <- function(g) {
+  ns <- asNamespace("ecoTemporalNet")
+  if (exists("calculate_weighted_overlap_distance", envir = ns, inherits = FALSE)) {
+    ecoTemporalNet::calculate_weighted_overlap_distance(g)
+  } else if (exists("calculate_distance_weights", envir = ns, inherits = FALSE)) {
+    ecoTemporalNet::calculate_distance_weights(g)
+  } else {
+    stop("No weighted-distance function found in ecoTemporalNet.")
+  }
+}
+```
+
+
+
+```{r }
+frog1_path <- system.file("extdata", "frogcomtest1.csv", package = "ecoTemporalNet")
+frog2_path <- system.file("extdata", "frogcomtest2.csv", package = "ecoTemporalNet")
+frog3_path <- system.file("extdata", "frogcomtest3.csv", package = "ecoTemporalNet")
+
+stopifnot(
+  nzchar(frog1_path),
+  nzchar(frog2_path),
+  nzchar(frog3_path)
+)
+
+pond1c14 <- readr::read_csv(frog1_path, show_col_types = FALSE)
+pond4c5  <- readr::read_csv(frog2_path, show_col_types = FALSE)
+pond4c15 <- readr::read_csv(frog3_path, show_col_types = FALSE)
+
+knitr::kable(head(pond1c14), caption = "Example phenology data")
+```
+
+# Plot phenology intervals
+
+```{r }
+plot_phenology <- function(dat, title = NULL) {
+  ggplot2::ggplot(
+    dat,
+    ggplot2::aes(
+      x = start_day,
+      xend = end_day + 0.5,
+      y = reorder(factor(species), -start_day),
+      yend = factor(species)
+    )
+  ) +
+    ggplot2::geom_segment(linewidth = 8) +
+    ggplot2::labs(x = "Day of Year", y = "Species", title = title) +
+    ggplot2::theme_classic()
+}
+
+plot_phenology(pond1c14, "Pond 1, Community 14")
+plot_phenology(pond4c5,  "Pond 4, Community 5")
+plot_phenology(pond4c15, "Pond 4, Community 15")
+```
+
+pond4c15 has relatively few species and includes a temporally isolated species.
+The other two communities have more species and more complicated overlap patterns.
+
+# Check temporal overlap
+
+```{r }
+overlap <- ecoTemporalNet::check_temporal_overlap(pond4c5)
+edges <- overlap$edges
+weights <- overlap$weights
+
+knitr::kable(
+  data.frame(
+    from = edges[, 1],
+    to = edges[, 2],
+    overlap_days = weights
+  ),
+  caption = "Directed edges and overlap durations"
+)
+```
+
+
+
+
+# build networls
+
+```{r }
+g1 <- ecoTemporalNet::create_temporal_network(pond1c14)
+g2 <- ecoTemporalNet::create_temporal_network(pond4c5)
+g3 <- ecoTemporalNet::create_temporal_network(pond4c15)
+
+g1
+g2
+g3
+```
+
+
+# visualize networks
+
+```{r }
+plot(
+  g1,
+  vertex.label = igraph::V(g1)$name,
+  edge.width = igraph::E(g1)$weight / 5,
+  main = "Temporal Ecological Network: pond1c14"
+)
+
+plot(
+  g2,
+  vertex.label = igraph::V(g2)$name,
+  edge.width = igraph::E(g2)$weight / 5,
+  main = "Temporal Ecological Network: pond4c5"
+)
+
+plot(
+  g3,
+  vertex.label = igraph::V(g3)$name,
+  edge.width = igraph::E(g3)$weight / 5,
+  main = "Temporal Ecological Network: pond4c15"
+)
+```
+
+
+# edge peristence 
+
+```{r }
+ecoTemporalNet::calculate_edge_persistence(pond1c14)
+ecoTemporalNet::calculate_edge_persistence(pond4c5)
+ecoTemporalNet::calculate_edge_persistence(pond4c15)
+```
+
+
+
+# shortest parhs
+
+```{r }
+shortPathg1 <- shortest_paths_fn(g1)
+shortPathg2 <- shortest_paths_fn(g2)
+shortPathg3 <- shortest_paths_fn(g3)
+
+shortPathg1
+shortPathg2
+shortPathg3
+```
+
+
+
+# distance
+
+```{r }
+distance_fn(g1)
+distance_fn(g2)
+distance_fn(g3)
+
+weighted_distance_fn(g1)
+weighted_distance_fn(g2)
+weighted_distance_fn(g3)
+```
+
+
+# interevent times
+
+```{r }
+ecoTemporalNet::inter_event_times(pond1c14)
+ecoTemporalNet::inter_event_times(pond4c5)
+ecoTemporalNet::inter_event_times(pond4c15)
+```
+
+
+# latency
+
+```{r }
+ecoTemporalNet::calculate_latency(g1)
+ecoTemporalNet::calculate_latency(g2)
+ecoTemporalNet::calculate_latency(g3)
+```
+
+
+#betweenness
+
+```{r }
+ecoTemporalNet::calculate_betweenness(g1)
+ecoTemporalNet::calculate_betweenness(g2)
+ecoTemporalNet::calculate_betweenness(g3)
+```
+
+
+# bursutness
+
+```{r }
+ecoTemporalNet::calculate_burstiness(pond1c14)
+ecoTemporalNet::calculate_burstiness(pond4c5)
+ecoTemporalNet::calculate_burstiness(pond4c15)
+```
+
+# memory with latency
+
+```{r }
+ecoTemporalNet::calculate_memory_with_latency(pond1c14)
+ecoTemporalNet::calculate_memory_with_latency(pond4c5)
+ecoTemporalNet::calculate_memory_with_latency(pond4c15)
+
+
+daymat1 <- ecoTemporalNet::get_daywise_overlap(pond1c14)
+daymat2 <- ecoTemporalNet::get_daywise_overlap(pond4c5)
+daymat3 <- ecoTemporalNet::get_daywise_overlap(pond4c15)
+```
+
+
+# Proportion of  days spent overlapping with neighbors
+
+```{r }
+ecoTemporalNet::calculate_prop_edge_persistence(daymat1)
+ecoTemporalNet::calculate_prop_edge_persistence(daymat2)
+ecoTemporalNet::calculate_prop_edge_persistence(daymat3)
+```
+
+
+
+# reachability
+
+```{r }
+ecoTemporalNet::calculate_temporal_reachability(g1)
+ecoTemporalNet::calculate_temporal_reachability(g2)
+ecoTemporalNet::calculate_temporal_reachability(g3)
+```
+
+
+# degree summaries
+
+```{r }
+ecoTemporalNet::calculate_avg_temporal_degree(pond1c14)
+ecoTemporalNet::calculate_avg_temporal_degree(pond4c5)
+ecoTemporalNet::calculate_avg_temporal_degree(pond4c15)
+
+ecoTemporalNet::calculate_avg_temporal_network_degree(g1)
+ecoTemporalNet::calculate_avg_temporal_network_degree(g2)
+ecoTemporalNet::calculate_avg_temporal_network_degree(g3)
+
+ecoTemporalNet::calculate_node_temporal_degree(g1)
+ecoTemporalNet::calculate_node_temporal_degree(g2)
+ecoTemporalNet::calculate_node_temporal_degree(g3)
+```
+
+
+# closeness and avg betweennes
+
+```{r }
+ecoTemporalNet::calculate_avg_closeness(g1)
+ecoTemporalNet::calculate_avg_closeness(g2)
+ecoTemporalNet::calculate_avg_closeness(g3)
+
+ecoTemporalNet::calculate_avg_betweenness(g1)
+ecoTemporalNet::calculate_avg_betweenness(g2)
+ecoTemporalNet::calculate_avg_betweenness(g3)
+```
+
+# plot usung the pkf
+
+```{r }
+ecoTemporalNet::plot_temporal_network(g1)
+ecoTemporalNet::plot_temporal_network(g2)
+ecoTemporalNet::plot_temporal_network(g3)
+
+
+ecoTemporalNet::plot_temporal_network(g1)
+ecoTemporalNet::plot_temporal_network(g2)
+ecoTemporalNet::plot_temporal_network(g3)
+```
+
+
+```{r }
+sessionInfo()
+```
+
+

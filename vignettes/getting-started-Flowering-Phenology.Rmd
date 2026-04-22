@@ -1,8 +1,8 @@
 ---
-title: "Getting Started with mypackage"
+title: "Getting Started with ecoTemporalNet-Flowering Phenology"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Getting Started with mypackage}
+  %\VignetteIndexEntry{Getting Started with ecoTemporalNet}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

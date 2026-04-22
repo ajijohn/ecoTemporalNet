@@ -1,0 +1,334 @@
+---
+title: "Getting Started with ecoTemporalNet"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with ecoTemporalNet}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+`ecoTemporalNet` builds directed interval-overlap networks from ecological timing data.
+In the package workflow, each species is represented by an activity interval from its
+first observed day-of-year (`start_day`) to its last observed day-of-year (`end_day`).
+
+This vignette walks through the package with one runnable example and demonstrates all
+major user-facing functions.
+
+## Example data
+
+```{r}
+species_data <- data.frame(
+  species   = c("A", "B", "C", "D", "E"),
+  start_day = c(10, 15, 24, 35, 41),
+  end_day   = c(22, 32, 40, 50, 55)
+)
+
+species_data
+```
+
+Interpretation:
+
+- `A` is active from day 10 to 22
+- `B` is active from day 15 to 32
+- `C` is active from day 24 to 40
+- `D` is active from day 35 to 50
+- `E` is active from day 41 to 55
+
+This gives a mixture of overlap and separation that is useful for testing most functions.
+
+## 1. Build the temporal overlap structure
+
+### `check_temporal_overlap()`
+
+This function finds pairwise interval overlaps and returns the edge list and edge weights.
+
+```{r}
+ov <- check_temporal_overlap(species_data)
+ov
+```
+
+The output contains:
+
+- `edges`: directed species pairs
+- `weights`: overlap duration in days
+
+### `create_temporal_network()`
+
+Build the `igraph` network object used by the other functions.
+
+```{r}
+g <- create_temporal_network(species_data)
+g
+```
+
+You can inspect node names and weights directly:
+
+```{r}
+igraph::V(g)$name
+igraph::E(g)$weight
+```
+
+### `plot_temporal_network()`
+
+```{r fig.width=7, fig.height=5}
+plot_temporal_network(g)
+```
+
+## 2. Distance, reachability, and path summaries
+
+The package has had two naming schemes in development:
+
+- older names:
+  - `calculate_distance_weights()`
+  - `calculate_distance()`
+  - `calculate_shortest_paths()`
+- newer names sometimes used during refactoring:
+  - `calculate_weighted_overlap_distance()`
+  - `calculate_overlap_hop_distance()`
+  - `calculate_overlap_shortest_paths()`
+
+The helper below makes the vignette runnable across either version.
+
+```{r}
+call_if_exists <- function(candidates, ...) {
+  for (nm in candidates) {
+    if (exists(nm, mode = "function")) {
+      return(do.call(get(nm, mode = "function"), list(...)))
+    }
+  }
+  stop("None of these functions were found: ", paste(candidates, collapse = ", "))
+}
+```
+
+### Weighted distance
+
+```{r}
+weighted_distance <- call_if_exists(
+  c("calculate_distance_weights", "calculate_weighted_overlap_distance"),
+  g = g
+)
+
+weighted_distance
+```
+
+### Hop distance
+
+```{r}
+hop_distance <- call_if_exists(
+  c("calculate_distance", "calculate_overlap_hop_distance"),
+  g = g
+)
+
+hop_distance
+```
+
+### Directed latency
+
+```{r}
+if ("use_overlap_strength" %in% names(formals(calculate_latency))) {
+  latency_default <- calculate_latency(g)
+  latency_weighted <- calculate_latency(g, use_overlap_strength = TRUE)
+} else {
+  latency_default <- calculate_latency(g)
+  latency_weighted <- latency_default
+}
+
+latency_default
+latency_weighted
+```
+
+### Shortest-path summary
+
+```{r}
+shortest_paths_matrix <- call_if_exists(
+  c("calculate_shortest_paths", "calculate_overlap_shortest_paths"),
+  g = g
+)
+
+shortest_paths_matrix
+```
+
+## 3. Persistence and overlap summaries
+
+### `calculate_edge_persistence()`
+
+This computes pairwise overlap duration directly from the interval data.
+
+```{r}
+edge_persistence <- calculate_edge_persistence(species_data)
+edge_persistence
+```
+
+### `get_daywise_overlap()`
+
+This creates a day-by-species matrix showing daily presence.
+
+```{r}
+day_matrix <- get_daywise_overlap(species_data)
+day_matrix[1:10, , drop = FALSE]
+```
+
+### `calculate_prop_edge_persistence()`
+
+This summarizes, for each species, the proportion of its active days spent co-occurring
+with at least one other species.
+
+```{r}
+calculate_prop_edge_persistence(day_matrix)
+```
+
+### `calculate_persistence_metrics()`
+
+```{r}
+calculate_persistence_metrics(g, species_data)
+```
+
+## 4. Degree and centrality metrics
+
+### `calculate_avg_temporal_degree()`
+
+```{r}
+calculate_avg_temporal_degree(g)
+```
+
+### `calculate_avg_temporal_network_degree()`
+
+```{r}
+calculate_avg_temporal_network_degree(g)
+```
+
+### `calculate_node_temporal_degree()`
+
+```{r}
+calculate_node_temporal_degree(g, mode = "total")
+calculate_node_temporal_degree(g, mode = "in")
+calculate_node_temporal_degree(g, mode = "out")
+```
+
+### `calculate_betweenness()`
+
+Some package versions define this function as:
+
+- `calculate_betweenness(g, shortest_paths_matrix)` in the older implementation, or
+- `calculate_betweenness(g, use_overlap_strength = TRUE, normalized = TRUE)` in the revised implementation
+
+The code below works with either interface.
+
+```{r}
+btw_args <- names(formals(calculate_betweenness))
+
+betweenness_result <- if ("shortest_paths_matrix" %in% btw_args) {
+  calculate_betweenness(g, shortest_paths_matrix)
+} else {
+  calculate_betweenness(g)
+}
+
+betweenness_result
+```
+
+### Average weighted betweenness and closeness
+
+```{r}
+calculate_avg_betweenness(g)
+calculate_avg_closeness(g)
+```
+
+### `calculate_temporal_reachability()`
+
+```{r}
+calculate_temporal_reachability(g)
+```
+
+## 5. Inter-event and burstiness summaries
+
+### `inter_event_times()`
+
+This function is especially important during development because it may return either:
+
+- an older column `inter_event_time`, or
+- a newer set of columns such as `gap_to_next`, `gap_positive`, and `overlap_duration`
+
+The code below prints whatever the installed version returns.
+
+```{r}
+iet <- inter_event_times(species_data)
+iet
+```
+
+### `calculate_burstiness()`
+
+```{r}
+calculate_burstiness(species_data)
+```
+
+### Standalone inter-event helpers
+
+These functions work on a numeric vector of event times rather than the species interval table.
+
+```{r}
+event_times <- c(3, 8, 10, 19, 31, 32)
+
+ied <- interevent_durations(event_times)
+ied
+```
+
+```{r}
+burstiness_simple(ied)
+burstiness_eq22(ied)
+memory(event_times)
+```
+
+### `calculate_memory_with_latency()`
+
+```{r}
+calculate_memory_with_latency(species_data)
+```
+
+## 6. Suggested workflow
+
+A typical analysis pipeline is:
+
+1. Start with a table of species, first DOY, and last DOY
+2. Build pairwise overlaps with `check_temporal_overlap()`
+3. Convert overlaps to a network with `create_temporal_network()`
+4. Plot and inspect the graph
+5. Summarize path structure, persistence, degree, centrality, and burstiness
+
+```{r}
+ov <- check_temporal_overlap(species_data)
+g  <- create_temporal_network(species_data)
+
+list(
+  overlap_edges = ov$edges,
+  overlap_weights = ov$weights,
+  avg_degree = calculate_avg_temporal_degree(g),
+  avg_network_degree = calculate_avg_temporal_network_degree(g),
+  reachability = calculate_temporal_reachability(g),
+  persistence = calculate_persistence_metrics(g, species_data)
+)
+```
+
+## 7. Notes on interpretation
+
+- Edge weights are overlap durations in days.
+- Directed edges encode temporal ordering based on interval starts.
+- Weighted distance and latency functions depend on the implementation version you have installed.
+- If your installed version uses the revised `inter_event_times()`, then:
+  - signed gaps describe temporal structure,
+  - non-negative gaps are more appropriate for burstiness and memory,
+  - overlap duration is more appropriate for edge persistence and edge strength.
+
+## Session info
+
+```{r}
+sessionInfo()
+```

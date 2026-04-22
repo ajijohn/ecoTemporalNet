@@ -18,9 +18,9 @@ Compute average temporal degree undirected (mean number of co-flowering partners
 \section{Interpretation}{
 
 \describe{
-  \item{0}{No coflowering — fully isolated species}
-  \item{1–2}{Species overlap with 1–2 others on average}
-  \item{High}{Dense synchrony — many co-flowering partners}
+\item{0}{No coflowering — fully isolated species}
+\item{1–2}{Species overlap with 1–2 others on average}
+\item{High}{Dense synchrony — many co-flowering partners}
 }
 }
 

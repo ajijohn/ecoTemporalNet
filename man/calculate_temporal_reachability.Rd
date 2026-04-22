@@ -7,7 +7,7 @@
 calculate_temporal_reachability(g)
 }
 \arguments{
-\item{g}{A directed igraph object from `create_temporal_network()`, with time-respecting edge direction}
+\item{g}{A directed igraph object from \code{create_temporal_network()}, with time-respecting edge direction}
 }
 \value{
 A data.frame with species name, upstream size, and downstream size

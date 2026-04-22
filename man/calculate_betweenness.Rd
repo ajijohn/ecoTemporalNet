@@ -2,10 +2,21 @@
 % Please edit documentation in R/functions.R
 \name{calculate_betweenness}
 \alias{calculate_betweenness}
-\title{Function to calculate time-dependent betweenness centrality}
+\title{Calculate node betweenness centrality in the directed overlap network}
 \usage{
-calculate_betweenness(g, shortest_paths_matrix)
+calculate_betweenness(g, use_overlap_strength = TRUE, normalized = TRUE)
+}
+\arguments{
+\item{g}{A directed igraph object from create_temporal_network()}
+
+\item{use_overlap_strength}{Logical; if TRUE use 1/weight as edge cost
+so stronger overlaps are treated as shorter paths.}
+
+\item{normalized}{Logical; return normalized betweenness if TRUE.}
+}
+\value{
+A named numeric vector of betweenness values
 }
 \description{
-Function to calculate time-dependent betweenness centrality
+Calculate node betweenness centrality in the directed overlap network
 }

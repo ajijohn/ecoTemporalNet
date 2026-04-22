@@ -7,7 +7,7 @@
 calculate_avg_closeness(g)
 }
 \arguments{
-\item{g}{An igraph object from `create_temporal_network()`}
+\item{g}{An igraph object from \code{create_temporal_network()}}
 }
 \value{
 A numeric value: average closeness centrality across all nodes
@@ -24,9 +24,9 @@ The graph is treated as undirected to reflect mutual co-flowering.
 \section{Interpretation}{
 
 \describe{
-  \item{0}{Node is isolated — no access to other species}
-  \item{Low}{Species is far from many others — few or weak overlaps}
-  \item{High}{Species is close to many others — central in phenological timing}
+\item{0}{Node is isolated — no access to other species}
+\item{Low}{Species is far from many others — few or weak overlaps}
+\item{High}{Species is close to many others — central in phenological timing}
 }
 }
 

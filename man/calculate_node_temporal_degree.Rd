@@ -7,17 +7,21 @@
 calculate_node_temporal_degree(g, mode = "total")
 }
 \arguments{
-\item{g}{An igraph object created with `create_temporal_network()`}
+\item{g}{An igraph object created with \code{create_temporal_network()}}
 
 \item{mode}{Character. One of "total" (default), "in", or "out".
-- "total": treats network as undirected (collapses direction)
-- "in": counts incoming edges only (e.g., overlapping with species that flower later)
-- "out": counts outgoing edges only (e.g., overlapping with species that flower earlier)}
+\itemize{
+\item "total": treats network as undirected (collapses direction)
+\item "in": counts incoming edges only (e.g., overlapping with species that flower later)
+\item "out": counts outgoing edges only (e.g., overlapping with species that flower earlier)
+}}
 }
 \value{
 A data.frame with:
-  - species: node name
-  - degree: number of connected overlapping edges
+\itemize{
+\item species: node name
+\item degree: number of connected overlapping edges
+}
 }
 \description{
 Computes the number of overlapping flowering partners per species in a phenological network.
@@ -27,10 +31,10 @@ In a directed network, in-degree and out-degree can reflect upstream/downstream 
 \section{Interpretation}{
 
 \describe{
-  \item{0}{Species does not coflower with any other species}
-  \item{1–2}{Species overlaps with a few others during its phenophase}
-  \item{High (>5)}{Species overlaps with many others — strong synchrony}
-  \item{"in" vs "out"}{May indicate if a species tends to flower earlier or later relative to its neighbors}
+\item{0}{Species does not coflower with any other species}
+\item{1–2}{Species overlaps with a few others during its phenophase}
+\item{High (>5)}{Species overlaps with many others — strong synchrony}
+\item{"in" vs "out"}{May indicate if a species tends to flower earlier or later relative to its neighbors}
 }
 }
 

@@ -2,10 +2,20 @@
 % Please edit documentation in R/functions.R
 \name{calculate_burstiness}
 \alias{calculate_burstiness}
-\title{Calculate burstiness (B)}
+\title{Calculate burstiness (B) from non-negative interval gaps}
 \usage{
 calculate_burstiness(species_data)
 }
+\arguments{
+\item{species_data}{Data frame with species, start_day, end_day}
+}
+\value{
+Numeric scalar in \link{-1, 1}, or NA if too few usable gaps
+}
 \description{
-Calculate burstiness (B)
+Uses gap_positive from inter_event_times():
+\itemize{
+\item overlap => 0 waiting time
+\item gap => positive waiting time
+}
 }

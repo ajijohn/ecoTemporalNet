@@ -68,33 +68,61 @@ plot_temporal_network <- function(g) {
 }
 
 
-#' Function to calculate Distance (shortest paths with weights representing overlap duration)
+#' Function to calculate distance (shortest paths with weights representing overlap duration)
 #'
 #' @export
-calculate_distance_weights <- function(g) {
+calculate_weighted_overlap_distance <- function(g) {
   distance_matrix <- shortest.paths(g, weights = E(g)$weight)  # Shortest paths with overlap duration as weights
   return(distance_matrix)
 }
 
-#' Function to calculate Distance (smallest number of nodes, hops, between species)
+#' Function to calculate distance (smallest number of nodes, hops, between species)
 #'
 #' @export
-calculate_distance <- function(g) {
+calculate_overlap_hop_distance <- function(g) {
   distance_matrix <- shortest.paths(g, v = V(g), mode = "all", weights = NULL)  # Shortest paths (unweighted)
   return(distance_matrix)
 }
 
-#' Function to calculate Latency (time duration, shortest time between species in time-ordered network)
+#' Calculate directed latency between species
+#'
+#' By default, latency is the minimum number of directed overlap steps
+#' needed to reach one species from another.
+#'
+#' If use_overlap_strength = TRUE, edge cost is 1 / overlap_duration so
+#' longer overlaps imply lower traversal cost.
+#'
+#' @param g A directed igraph object from create_temporal_network()
+#' @param use_overlap_strength Logical; if TRUE use 1/weight as edge cost.
+#' @return A matrix of directed latencies
 #' @export
-calculate_latency <- function(g) {
-  # Calculate the shortest path distances with weights (overlap duration)
-  latency_matrix <- shortest.paths(g, weights = E(g)$weight)
-  return(latency_matrix)
+calculate_latency <- function(g, use_overlap_strength = FALSE) {
+  if (igraph::vcount(g) == 0) {
+    return(matrix(
+      numeric(0),
+      nrow = 0,
+      ncol = 0,
+      dimnames = list(character(), character())
+    ))
+  }
+
+  if (use_overlap_strength) {
+    w <- igraph::E(g)$weight
+    if (is.null(w) || any(!is.finite(w)) || any(w <= 0)) {
+      stop("All edge weights must be positive and finite when use_overlap_strength = TRUE.")
+    }
+    cost <- 1 / w
+  } else {
+    cost <- NA  # unweighted directed shortest paths = hop latency
+  }
+
+  igraph::distances(g, mode = "out", weights = cost)
 }
+
 
 #' Function to compute shortest paths between all species pairs
 #' @export
-calculate_shortest_paths <- function(g) {
+calculate_overlap_shortest_paths <- function(g) {
   # Calculate all shortest paths between every pair of nodes
   shortest_paths_matrix <- shortest.paths(g, weights = NULL)
   return(shortest_paths_matrix)
@@ -128,94 +156,177 @@ calculate_edge_persistence <- function(species_data) {
   return(list(edges = do.call(rbind, edges), persistence = persistence_values))
 }
 
-#' Function to calculate time-dependent betweenness centrality
+#' Calculate node betweenness centrality in the directed overlap network
 #'
+#' @param g A directed igraph object from create_temporal_network()
+#' @param use_overlap_strength Logical; if TRUE use 1/weight as edge cost
+#'   so stronger overlaps are treated as shorter paths.
+#' @param normalized Logical; return normalized betweenness if TRUE.
+#' @return A named numeric vector of betweenness values
 #' @export
-calculate_betweenness <- function(g, shortest_paths_matrix) {
-  N <- vcount(g)  # Number of nodes
-  betweenness_values <- numeric(N)  # Initialize betweenness values
-
-  for (i in 1:N) {
-    for (j in 1:N) {
-      if (i != j) {
-        # Get the shortest path lengths between nodes i and j
-        shortest_path_length <- shortest_paths_matrix[i, j]
-
-        if (is.finite(shortest_path_length)) {
-          # For each path, calculate the contribution to betweenness centrality
-          betweenness_values[i] <- betweenness_values[i] + 1 / shortest_path_length
-        }
-      }
-    }
+calculate_betweenness <- function(g,
+                                  use_overlap_strength = TRUE,
+                                  normalized = TRUE) {
+  if (igraph::vcount(g) == 0) {
+    return(setNames(numeric(0), character(0)))
   }
 
-  # Normalize by the number of nodes minus 1
-  betweenness_values <- betweenness_values / (N - 1)
+  weights <- NULL
+  if (use_overlap_strength) {
+    w <- igraph::E(g)$weight
+    if (is.null(w) || any(!is.finite(w)) || any(w <= 0)) {
+      stop("All edge weights must be positive and finite when use_overlap_strength = TRUE.")
+    }
+    weights <- 1 / w
+  }
 
-  return(betweenness_values)
+  igraph::betweenness(
+    g,
+    directed = TRUE,
+    weights = weights,
+    normalized = normalized
+  )
 }
 
 
-#' Calculate inter-event times (duration between end of one species and start of the next)
+#' Calculate signed interval separation to the next species in start-day order
+#'
+#' Positive values mean a gap.
+#' Zero means intervals touch.
+#' Negative values mean overlap.
+#'
+#' @param species_data Data frame with species, start_day, end_day
+#' @return species_data ordered by start_day with new columns describing
+#'   the next interval and signed separation
 #' @export
 inter_event_times <- function(species_data) {
-  species_data_iet <- species_data %>%
-  dplyr::arrange(start_day) %>%  # Ensure species are ordered by start day
-  dplyr::mutate(
-    inter_event_time = abs(dplyr::lead(start_day) - end_day)  # Calculate the time difference (assumin days)
-  )
-return(species_data_iet)
+  required_cols <- c("species", "start_day", "end_day")
+  missing_cols <- setdiff(required_cols, names(species_data))
+  if (length(missing_cols) > 0) {
+    stop("species_data is missing required columns: ",
+         paste(missing_cols, collapse = ", "))
+  }
+
+  species_data %>%
+    dplyr::arrange(start_day, end_day, species) %>%
+    dplyr::mutate(
+      next_species      = dplyr::lead(species),
+      next_start_day    = dplyr::lead(start_day),
+      next_end_day      = dplyr::lead(end_day),
+      gap_to_next       = next_start_day - end_day - 1L,
+      gap_positive      = pmax(gap_to_next, 0L),
+      overlap_duration  = pmax(0L, end_day - next_start_day + 1L)
+    )
 }
 
-#' The formula uses latency to adjust the memory metric, using correlation between inter-event times
+
+#' Calculate lag-1 memory in interval gaps, discounted by network latency
+#'
+#' Steps:
+#' 1. Order species by start_day
+#' 2. Compute non-negative gaps between consecutive species
+#' 3. Compute lag-1 correlation, weighted by directed latency between the
+#'    corresponding species in the overlap network
+#'
+#' @param species_data Data frame with species, start_day, end_day
+#' @return Numeric scalar in [-1, 1] or NA if too few usable intervals
 #' @export
 calculate_memory_with_latency <- function(species_data) {
-
-  #if no overlaps,short-ciruit
-  if (is.null(check_temporal_overlap(species_data)$edges))
-  {
+  if (nrow(species_data) < 3) {
     return(NA_real_)
   }
 
-  species_data_iet<-  inter_event_times(species_data)
-  n <- nrow(species_data_iet)
+  x <- inter_event_times(species_data)
 
-  # Build the temporal network
-  tn <- create_temporal_network(species_data)
-  latency_matrix <- calculate_latency(tn)
+  # Use non-negative gap lengths; overlaps count as 0 gap for this metric
+  gaps <- x$gap_positive
+  valid_gap_idx <- which(!is.na(gaps))
 
-  # Calculate inter-event times
-  inter_event_times <- species_data_iet$inter_event_time
+  if (length(valid_gap_idx) < 2) {
+    return(NA_real_)
+  }
 
-  # Memory calculation using latency-adjusted formula
-  m1 <- mean(inter_event_times,na.rm = TRUE)
-  m2 <- mean(inter_event_times[2:n],na.rm = TRUE)
+  # Species pairs corresponding to each consecutive gap
+  species_from <- x$species[valid_gap_idx]
+  species_to   <- x$next_species[valid_gap_idx]
 
-  sigma1 <- sd(inter_event_times,na.rm = TRUE)
-  sigma2 <- sd(inter_event_times[2:n],na.rm = TRUE)
+  g <- create_temporal_network(species_data)
+  if (igraph::vcount(g) == 0) {
+    return(NA_real_)
+  }
 
-  # Apply the memory formula with latency consideration (adjust the memory formula by incorporating latency)
-  memory_value <- mean((inter_event_times - m1) *
-                         (dplyr::lead(inter_event_times) - m2) *
-                         latency_matrix[1:(n - 1), 2:n], na.rm = TRUE) / (sigma1 * sigma2)
+  lat <- calculate_latency(g, use_overlap_strength = FALSE)
 
-  return(memory_value)
+  # Need adjacent gap pairs: gaps[k] with gaps[k+1]
+  gap1 <- gaps[valid_gap_idx[-length(valid_gap_idx)]]
+  gap2 <- gaps[valid_gap_idx[-1]]
+
+  from_nodes <- species_from[-length(species_from)]
+  to_nodes   <- species_to[-1]
+
+  # Weight by how close these linked species are in the directed network
+  w <- mapply(
+    function(a, b) {
+      if (is.na(a) || is.na(b) || !(a %in% rownames(lat)) || !(b %in% colnames(lat))) {
+        return(NA_real_)
+      }
+      d <- lat[a, b]
+      if (!is.finite(d)) return(0)
+      1 / (1 + d)
+    },
+    from_nodes,
+    to_nodes
+  )
+
+  ok <- is.finite(gap1) & is.finite(gap2) & is.finite(w) & (w > 0)
+  if (sum(ok) < 2) {
+    return(NA_real_)
+  }
+
+  gap1 <- gap1[ok]
+  gap2 <- gap2[ok]
+  w    <- w[ok]
+
+  mu1 <- stats::weighted.mean(gap1, w)
+  mu2 <- stats::weighted.mean(gap2, w)
+
+  sd1 <- sqrt(stats::weighted.mean((gap1 - mu1)^2, w))
+  sd2 <- sqrt(stats::weighted.mean((gap2 - mu2)^2, w))
+
+  if (sd1 == 0 || sd2 == 0) {
+    return(NA_real_)
+  }
+
+  stats::weighted.mean((gap1 - mu1) * (gap2 - mu2), w) / (sd1 * sd2)
 }
 
-#' Calculate burstiness (B)
+
+#' Calculate burstiness (B) from non-negative interval gaps
+#'
+#' Uses gap_positive from inter_event_times():
+#' - overlap => 0 waiting time
+#' - gap => positive waiting time
+#'
+#' @param species_data Data frame with species, start_day, end_day
+#' @return Numeric scalar in [-1, 1], or NA if too few usable gaps
 #' @export
 calculate_burstiness <- function(species_data) {
+  x <- inter_event_times(species_data)
 
-  species_data_iet<-  inter_event_times(species_data)
+  gaps <- x$gap_positive[!is.na(x$gap_positive)]
 
-  # Calculate mean and standard deviation of inter-event times
-  m_tau <- mean(species_data_iet$inter_event_time,na.rm = TRUE)
-  sigma_tau <- sd(species_data_iet$inter_event_time,na.rm = TRUE)
+  if (length(gaps) < 2) {
+    return(NA_real_)
+  }
 
-  # Calculate Burstiness (B) using the formula
-  burstiness <- (sigma_tau / m_tau - 1) / (sigma_tau / m_tau + 1)
+  m_tau <- mean(gaps)
+  sigma_tau <- stats::sd(gaps)
 
-  return(burstiness)
+  if (!is.finite(m_tau) || !is.finite(sigma_tau) || (m_tau + sigma_tau) == 0) {
+    return(NA_real_)
+  }
+
+  (sigma_tau - m_tau) / (sigma_tau + m_tau)
 }
 
 #’ Compute inter‐event durations from sorted event times
@@ -264,18 +375,28 @@ burstiness_eq22 <- function(ied) {
 }
 
 
-#’ Memory metric (lag‐1 correlation of inter‐event times, scaled)
-#’
-#’ m = r₁ / (n−2), where r₁ = corr(ied₁…n−2, ied₂…n−1)
-#’ @param times Numeric vector of event times
-#’ @return Numeric scalar in [–1,1] or NA if too few events
+#' Memory metric: lag-1 correlation of inter-event durations
+#'
+#' @param times Numeric vector of event times
+#' @return Numeric scalar in [-1, 1], or NA if too few events
 #' @export
 memory <- function(times) {
   ied <- interevent_durations(times)
-  if (length(ied) < 2) return(NA_real_)
-  r1 <- stats::cor(ied[-length(ied)], ied[-1])
-  r1 / (length(ied) - 1)
+
+  if (length(ied) < 2) {
+    return(NA_real_)
+  }
+
+  x <- ied[-length(ied)]
+  y <- ied[-1]
+
+  if (stats::sd(x) == 0 || stats::sd(y) == 0) {
+    return(NA_real_)
+  }
+
+  stats::cor(x, y)
 }
+
 
 #’ Build co-occurrence table by day
 #’
@@ -302,26 +423,46 @@ get_daywise_overlap <- function(species_data) {
   return(day_matrix)
 }
 
-#’ For each species, calculate % of its flowering days spent coflowering
-#’
-#’ @param Day matrix
-#’ @return dataframe of species and prop. of persistence
+#' For each species, calculate the proportion of flowering days spent coflowering
+#'
+#' @param day_matrix A day x species presence matrix from get_daywise_overlap()
+#' @return A data.frame with species and proportion of flowering days with >=1 neighbor
 #' @export
 calculate_prop_edge_persistence <- function(day_matrix) {
+  if (!is.matrix(day_matrix)) {
+    stop("day_matrix must be a matrix.")
+  }
+
   species <- colnames(day_matrix)
-  result <- data.frame(species = species, prop_with_neighbors = NA)
+  if (is.null(species)) {
+    stop("day_matrix must have species names as column names.")
+  }
+
+  result <- data.frame(
+    species = species,
+    prop_with_neighbors = NA_real_,
+    stringsAsFactors = FALSE
+  )
 
   for (sp in species) {
     flowering_days <- which(day_matrix[, sp] == 1)
-    coflower_days <- sapply(flowering_days, function(day_idx) {
-      coflowering <- sum(day_matrix[day_idx, ]) > 1  # at least one neighbor
-      return(coflowering)
-    })
-    prop <- sum(coflower_days) / length(flowering_days)
-    result[result$species == sp, "prop_edge_persistency"] <- prop
+
+    if (length(flowering_days) == 0) {
+      result[result$species == sp, "prop_with_neighbors"] <- NA_real_
+      next
+    }
+
+    coflower_days <- vapply(
+      flowering_days,
+      function(day_idx) sum(day_matrix[day_idx, ]) > 1,
+      logical(1)
+    )
+
+    prop <- mean(coflower_days)
+    result[result$species == sp, "prop_with_neighbors"] <- prop
   }
 
-  return(result)
+  result
 }
 
 #' Compute average node and edge persistence from the network

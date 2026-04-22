@@ -7,7 +7,7 @@
 calculate_persistence_metrics(g, species_data)
 }
 \arguments{
-\item{g}{An igraph object created from `create_temporal_network`}
+\item{g}{An igraph object created from \code{create_temporal_network}}
 
 \item{species_data}{The original data.frame with species, start_day, and end_day}
 }

@@ -2,10 +2,19 @@
 % Please edit documentation in R/functions.R
 \name{inter_event_times}
 \alias{inter_event_times}
-\title{Calculate inter-event times (duration between end of one species and start of the next)}
+\title{Calculate signed interval separation to the next species in start-day order}
 \usage{
 inter_event_times(species_data)
 }
+\arguments{
+\item{species_data}{Data frame with species, start_day, end_day}
+}
+\value{
+species_data ordered by start_day with new columns describing
+the next interval and signed separation
+}
 \description{
-Calculate inter-event times (duration between end of one species and start of the next)
+Positive values mean a gap.
+Zero means intervals touch.
+Negative values mean overlap.
 }

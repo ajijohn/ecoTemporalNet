@@ -7,7 +7,7 @@
 calculate_avg_betweenness(g)
 }
 \arguments{
-\item{g}{An igraph object created using `create_temporal_network()`}
+\item{g}{An igraph object created using \code{create_temporal_network()}}
 }
 \value{
 A numeric value: average betweenness centrality across all nodes in the (undirected) network
@@ -24,9 +24,9 @@ To prioritize such overlaps, the function inverts weights (i.e., 1/weight) for s
 \section{Interpretation}{
 
 \describe{
-  \item{0}{No node acts as a bridge — all paths are direct or disconnected}
-  \item{Low (~0.1–0.5)}{Some species act as connectors between clusters, but many are peripheral}
-  \item{High (>1)}{One or more species serve as important bridges — linking phenological modules or stages}
+\item{0}{No node acts as a bridge — all paths are direct or disconnected}
+\item{Low (~0.1–0.5)}{Some species act as connectors between clusters, but many are peripheral}
+\item{High (>1)}{One or more species serve as important bridges — linking phenological modules or stages}
 }
 }
 

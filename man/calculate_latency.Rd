@@ -2,10 +2,23 @@
 % Please edit documentation in R/functions.R
 \name{calculate_latency}
 \alias{calculate_latency}
-\title{Function to calculate Latency (time duration, shortest time between species in time-ordered network)}
+\title{Calculate directed latency between species}
 \usage{
-calculate_latency(g)
+calculate_latency(g, use_overlap_strength = FALSE)
+}
+\arguments{
+\item{g}{A directed igraph object from create_temporal_network()}
+
+\item{use_overlap_strength}{Logical; if TRUE use 1/weight as edge cost.}
+}
+\value{
+A matrix of directed latencies
 }
 \description{
-Function to calculate Latency (time duration, shortest time between species in time-ordered network)
+By default, latency is the minimum number of directed overlap steps
+needed to reach one species from another.
+}
+\details{
+If use_overlap_strength = TRUE, edge cost is 1 / overlap_duration so
+longer overlaps imply lower traversal cost.
 }

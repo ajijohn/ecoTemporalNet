@@ -2,10 +2,22 @@
 % Please edit documentation in R/functions.R
 \name{calculate_memory_with_latency}
 \alias{calculate_memory_with_latency}
-\title{The formula uses latency to adjust the memory metric, using correlation between inter-event times}
+\title{Calculate lag-1 memory in interval gaps, discounted by network latency}
 \usage{
 calculate_memory_with_latency(species_data)
 }
+\arguments{
+\item{species_data}{Data frame with species, start_day, end_day}
+}
+\value{
+Numeric scalar in \link{-1, 1} or NA if too few usable intervals
+}
 \description{
-The formula uses latency to adjust the memory metric, using correlation between inter-event times
+Steps:
+\enumerate{
+\item Order species by start_day
+\item Compute non-negative gaps between consecutive species
+\item Compute lag-1 correlation, weighted by directed latency between the
+corresponding species in the overlap network
+}
 }

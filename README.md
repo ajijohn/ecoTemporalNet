@@ -50,7 +50,7 @@ weights <- overlap_result$weights
 g <- create_temporal_network(species_data)
 
 # 3. Compute latency (shortest‐path matrix)
-latency_mat <-g calculate_latency(g)
+latency_mat <- calculate_latency(g)
 
 # 4. Calculate memory adjusted by a latency matrix
 #    (here: simple toy latency for demonstration)
@@ -148,6 +148,6 @@ MIT &mdash; see the [LICENSE](LICENSE) file for details.
 
 ## About
 
-**ecoTemporalNet** enables ecologists to quantify phenological synchrony and fragmentation using time-respecting network analysis. Designed for applications in climate change ecology, alpine phenology, and pollinator dynamics.
+**ecoTemporalNet** enables ecologists to quantify phenological synchrony and fragmentation using time-respecting network analysis. Designed for applications in climate change ecology, alpine phen[...]
 
 ---

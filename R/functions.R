@@ -215,7 +215,13 @@ inter_event_times <- function(species_data) {
       next_end_day      = dplyr::lead(end_day),
       gap_to_next       = next_start_day - end_day - 1L,
       gap_positive      = pmax(gap_to_next, 0L),
-      overlap_duration  = pmax(0L, end_day - next_start_day + 1L)
+      # Fix the issue where there is an overlap
+      # https://github.com/ajijohn/ecoTemporalNet/issues/7
+      #overlap_duration  = pmax(0L, end_day - next_start_day + 1L)
+      overlap_duration = pmax(
+        0L,
+        pmin(end_day, next_end_day) - next_start_day + 1L
+      )
     )
 }
 

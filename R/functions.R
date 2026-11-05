@@ -4,6 +4,42 @@ check_temporal_overlap <- function(species_data) {
   edges <- list()
   weights <- c()  # Store the edge weights (duration of overlap)
 
+  #https://github.com/ajijohn/ecoTemporalNet/issues/5
+  # Support for survey dates in calendar format
+
+  date_cols <- c("start_date", "end_date")
+
+  if (any(date_cols %in% names(species_data))) {
+    if (!all(date_cols %in% names(species_data))) {
+      stop("Provide both start_date and end_date.")
+    }
+
+    start_date <- as.Date(species_data$start_date)
+    end_date <- as.Date(species_data$end_date)
+
+    if (anyNA(start_date) || anyNA(end_date)) {
+      stop("Dates must be non-missing and valid YYYY-MM-DD dates.")
+    }
+
+    if (any(start_date > end_date)) {
+      stop("start_date must be on or before end_date.")
+    }
+
+    # Day-of-year conversion assumes a single calendar year.
+    years <- unique(c(
+      format(start_date, "%Y"),
+      format(end_date, "%Y")
+    ))
+
+    if (length(years) > 1L) {
+      stop("All dates must belong to the same calendar year.")
+    }
+
+    species_data$start_day <- as.integer(format(start_date, "%j"))
+    species_data$end_day <- as.integer(format(end_date, "%j"))
+  }
+
+
   for (i in 1:(nrow(species_data) - 1)) {
     for (j in (i + 1):nrow(species_data)) {
       species_i <- species_data[i, ]

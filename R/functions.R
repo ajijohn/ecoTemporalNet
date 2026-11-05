@@ -107,6 +107,21 @@ prepare_species_data <- function(species_data) {
 #' no later than the second. Equal-onset edges follow input row order.
 #' Returns an edge matrix and corresponding overlap durations; when no pairs
 #' are retained, edges is NULL.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' check_temporal_overlap(species_data)
+#'
+#' # Calendar dates within a single year are also accepted.
+#' date_data <- data.frame(
+#'   species = c("A", "B"),
+#'   start_date = c("2026-04-01", "2026-04-04"),
+#'   end_date = c("2026-04-05", "2026-04-08")
+#' )
+#' check_temporal_overlap(date_data)
 #' @export
 check_temporal_overlap <- function(species_data) {
   edges <- list()
@@ -154,6 +169,14 @@ check_temporal_overlap <- function(species_data) {
 #' The implementation returns an igraph object. Only species occurring in the
 #' edge list become vertices; species without retained overlaps are omitted.
 #' When there are no edges, an empty directed graph with no vertices is returned.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' g
 #' @export
 create_temporal_network <- function(species_data) {
 
@@ -184,6 +207,15 @@ create_temporal_network <- function(species_data) {
 #' maximum of five relative to the largest edge weight in the supplied graph.
 #' The display represents an aggregated overlap network rather than a sequence
 #' of daily snapshots. Nonempty graphs with positive edge weights are expected.
+#' @examples
+#' library(igraph)
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' plot_temporal_network(g)
 #' @export
 plot_temporal_network <- function(g) {
   # Plot the network with edge weights (temporal overlap in days)
@@ -208,6 +240,15 @@ plot_temporal_network <- function(g) {
 #' graph as undirected. Returns a matrix of distances, not the paths themselves.
 #' Unreachable pairs have infinite distance. These costs do not represent
 #' elapsed-time travel through the flowering season.
+#' @examples
+#' library(igraph)
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_weighted_overlap_distance(g)
 #' @export
 calculate_weighted_overlap_distance <- function(g) {
   distance_matrix <- shortest.paths(g, weights = E(g)$weight)  # Shortest paths with overlap duration as weights
@@ -223,6 +264,15 @@ calculate_weighted_overlap_distance <- function(g) {
 #' produces overlap-weighted distances rather than unweighted hop counts.
 #' Without a weight attribute, distances count edges. Unreachable pairs have
 #' infinite distance.
+#' @examples
+#' library(igraph)
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_overlap_hop_distance(g)
 #' @export
 calculate_overlap_hop_distance <- function(g) {
   distance_matrix <- shortest.paths(g, v = V(g), mode = "all", weights = NULL)  # Shortest paths (unweighted)
@@ -248,6 +298,15 @@ calculate_overlap_hop_distance <- function(g) {
 #'
 #' Latency here denotes a graph distance, not elapsed time or an earliest
 #' arrival time. A graph with no vertices produces a zero-by-zero matrix.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_latency(g)
+#' calculate_latency(g, use_overlap_strength = TRUE)
 #' @export
 calculate_latency <- function(g, use_overlap_strength = FALSE) {
   if (igraph::vcount(g) == 0) {
@@ -280,6 +339,15 @@ calculate_latency <- function(g, use_overlap_strength = FALSE) {
 #' undirected. Because weights = NULL, an existing weight attribute is used
 #' as additive cost; otherwise paths are unweighted. Unreachable pairs have
 #' infinite distance.
+#' @examples
+#' library(igraph)
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_overlap_shortest_paths(g)
 #' @export
 calculate_overlap_shortest_paths <- function(g) {
   # Calculate all shortest paths between every pair of nodes
@@ -296,6 +364,13 @@ calculate_overlap_shortest_paths <- function(g) {
 #' helper. Pair labels follow input order and do not establish ecological
 #' direction. Only overlapping pairs are returned; with no overlaps, edges is
 #' NULL and persistence is empty.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' calculate_edge_persistence(species_data)
 #' @export
 calculate_edge_persistence <- function(species_data) {
   edges <- list()
@@ -341,6 +416,15 @@ calculate_edge_persistence <- function(species_data) {
 #'
 #' This is betweenness on the aggregated overlap graph, not a calculation of
 #' time-dependent movement or elapsed-time paths.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_betweenness(g)
+#' calculate_betweenness(g, normalized = FALSE)
 #' @export
 calculate_betweenness <- function(g,
                                   use_overlap_strength = TRUE,
@@ -387,6 +471,14 @@ calculate_betweenness <- function(g,
 #' Its magnitude need not equal the absolute signed separation. Comparisons
 #' are between consecutive rows in onset order, not gaps in the union of all
 #' species' intervals. The last row has missing next-interval summaries.
+#' @examples
+#' library(dplyr)
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' inter_event_times(species_data)
 #' @export
 inter_event_times <- function(species_data) {
 
@@ -439,6 +531,15 @@ inter_event_times <- function(species_data) {
 #' prevent directed paths from crossing the corresponding onset boundary.
 #' This can exclude the variation needed by the statistic and yield undefined
 #' results. The weighting is not a measure of elapsed-time latency.
+#' @examples
+#' library(dplyr)
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' # NA is returned when usable gap pairs have insufficient variance.
+#' calculate_memory_with_latency(species_data)
 #' @export
 calculate_memory_with_latency <- function(species_data) {
   if (nrow(species_data) < 3) {
@@ -529,6 +630,13 @@ calculate_memory_with_latency <- function(species_data) {
 #' summarizes heterogeneity among overlapping pairs; pairs sharing a species
 #' are not independent observations. Fewer than two durations or undefined
 #' moments produce NA.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 6),
+#'   end_day = c(5, 8, 10)
+#' )
+#' calculate_overlap_burstiness(species_data)
 #' @export
 calculate_overlap_burstiness <- function(species_data) {
   ep <- calculate_edge_persistence(species_data)
@@ -572,6 +680,14 @@ calculate_overlap_burstiness <- function(species_data) {
 #' using the sample standard deviation. Fewer than two usable gaps or a zero
 #' denominator produce NA. These gaps are not necessarily periods without
 #' flowering anywhere in the community.
+#' @examples
+#' library(dplyr)
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' calculate_burstiness(species_data)
 #' @export
 calculate_burstiness <- function(species_data) {
   x <- inter_event_times(species_data)
@@ -600,6 +716,9 @@ calculate_burstiness <- function(species_data) {
 #' using diff(). Tied times produce zero durations. Units follow the numeric
 #' representation of the input; there is no inclusive-day adjustment. This
 #' function operates on event times rather than flowering intervals.
+#' @examples
+#' times <- c(12, 1, 7, 3, 20)
+#' interevent_durations(times)
 #' @export
 interevent_durations <- function(times) {
   t <- sort(as.numeric(times))
@@ -618,6 +737,9 @@ interevent_durations <- function(times) {
 #' or missing-value removal is performed. When mean and standard deviation
 #' are both zero, the implementation returns 1 by convention. Insufficient
 #' observations or missing values are not explicitly guarded against.
+#' @examples
+#' ied <- c(2, 4, 5, 8, 3)
+#' burstiness_simple(ied)
 #' @export
 burstiness_simple <- function(ied) {
   m <- mean(ied)
@@ -643,6 +765,9 @@ burstiness_simple <- function(ied) {
 #' zero-mean input is rejected. Missing values and insufficient observations
 #' are not explicitly handled. The finite-size formula and sample-size
 #' convention should be considered when interpreting results.
+#' @examples
+#' ied <- c(2, 4, 5, 8, 3)
+#' burstiness_eq22(ied)
 #' @export
 burstiness_eq22 <- function(ied) {
   m <- mean(ied)
@@ -669,6 +794,9 @@ burstiness_eq22 <- function(ied) {
 #' durations, lagged vectors each contain one value and the current
 #' implementation can error. This statistic describes event-time ordering,
 #' not network reachability.
+#' @examples
+#' times <- c(1, 3, 7, 12, 20, 23)
+#' memory(times)
 #' @export
 memory <- function(times) {
   ied <- interevent_durations(times)
@@ -699,6 +827,13 @@ memory <- function(times) {
 #' species; days with no species present are omitted. Row order follows first
 #' occurrence in the expanded intervals and is not explicitly sorted. Presence
 #' is assumed continuous between each species' start and end.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' get_daywise_overlap(species_data)
 #' @export
 get_daywise_overlap <- function(species_data) {
 
@@ -733,6 +868,14 @@ get_daywise_overlap <- function(species_data) {
 #' of present days. Each day is counted once regardless of partner number.
 #' Species with no present days receive NA. This is a species-level coflowering
 #' proportion, not a mean of pairwise edge durations.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' day_matrix <- get_daywise_overlap(species_data)
+#' calculate_prop_edge_persistence(day_matrix)
 #' @export
 calculate_prop_edge_persistence <- function(day_matrix) {
   if (!is.matrix(day_matrix)) {
@@ -784,6 +927,14 @@ calculate_prop_edge_persistence <- function(day_matrix) {
 #' to the node mean. Date inputs are converted to day of year by the internal
 #' helper. A graph with no vertices returns NA for both summaries; with
 #' vertices but no edges, the edge summary is NA.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_persistence_metrics(g, species_data)
 #' @export
 calculate_persistence_metrics <- function(g, species_data) {
 
@@ -833,6 +984,14 @@ calculate_persistence_metrics <- function(g, species_data) {
 #' coflowering partners. The average includes only vertices present in the
 #' supplied graph; an empty graph returns NA. Values depend on community
 #' richness and flowering duration as well as relative timing.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_avg_temporal_degree(g)
 #' @export
 calculate_avg_temporal_degree <- function(g) {
   if (igraph::vcount(g) == 0) return(NA)
@@ -856,6 +1015,14 @@ calculate_avg_temporal_degree <- function(g) {
 #' directed edge contributes to both its source's out-degree and its target's
 #' in-degree, so the mean total degree is twice the number of edges divided
 #' by the number of vertices. A graph with no vertices returns NA.
+#' @examples
+#' species_data <- data.frame(
+#'   species = c("A", "B", "C"),
+#'   start_day = c(1, 4, 10),
+#'   end_day = c(5, 8, 15)
+#' )
+#' g <- create_temporal_network(species_data)
+#' calculate_avg_temporal_network_degree(g)
 #' @export
 calculate_avg_temporal_network_degree <- function(g) {
   if (igraph::vcount(g) == 0) return(NA)

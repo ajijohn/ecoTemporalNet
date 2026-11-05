@@ -1,21 +1,50 @@
-#' Create the time-ordered network by checking temporal overlap
-#' @export
-check_temporal_overlap <- function(species_data) {
-  edges <- list()
-  weights <- c()  # Store the edge weights (duration of overlap)
 
-  #https://github.com/ajijohn/ecoTemporalNet/issues/5
-  # Support for survey dates in calendar format
+# Internal helper: accept numeric days or dates within one calendar year.
+prepare_species_data <- function(species_data) {
+  if (!is.data.frame(species_data)) {
+    stop("species_data must be a data.frame.")
+  }
+
+  if (!"species" %in% names(species_data)) {
+    stop("species_data is missing required columns: species.")
+  }
 
   date_cols <- c("start_date", "end_date")
 
+  # Date columns take precedence over existing day columns.
   if (any(date_cols %in% names(species_data))) {
     if (!all(date_cols %in% names(species_data))) {
       stop("Provide both start_date and end_date.")
     }
 
-    start_date <- as.Date(species_data$start_date)
-    end_date <- as.Date(species_data$end_date)
+    parse_date <- function(x) {
+      if (inherits(x, "Date")) {
+        return(x)
+      }
+
+      if (!is.character(x)) {
+        stop("Date columns must contain Date values or YYYY-MM-DD strings.")
+      }
+
+      parsed <- tryCatch(
+        as.Date(x, format = "%Y-%m-%d"),
+        error = function(e) {
+          stop("Dates must be non-missing and valid YYYY-MM-DD dates.")
+        }
+      )
+
+      valid <- !is.na(x) & !is.na(parsed)
+      valid[valid] <- format(parsed[valid], "%Y-%m-%d") == x[valid]
+
+      if (!all(valid)) {
+        stop("Dates must be non-missing and valid YYYY-MM-DD dates.")
+      }
+
+      parsed
+    }
+
+    start_date <- parse_date(species_data$start_date)
+    end_date <- parse_date(species_data$end_date)
 
     if (anyNA(start_date) || anyNA(end_date)) {
       stop("Dates must be non-missing and valid YYYY-MM-DD dates.")
@@ -25,7 +54,6 @@ check_temporal_overlap <- function(species_data) {
       stop("start_date must be on or before end_date.")
     }
 
-    # Day-of-year conversion assumes a single calendar year.
     years <- unique(c(
       format(start_date, "%Y"),
       format(end_date, "%Y")
@@ -38,6 +66,44 @@ check_temporal_overlap <- function(species_data) {
     species_data$start_day <- as.integer(format(start_date, "%j"))
     species_data$end_day <- as.integer(format(end_date, "%j"))
   }
+
+  required_cols <- c("start_day", "end_day")
+  missing_cols <- setdiff(required_cols, names(species_data))
+
+  if (length(missing_cols) > 0L) {
+    stop(
+      "species_data is missing required columns: ",
+      paste(missing_cols, collapse = ", ")
+    )
+  }
+
+  for (column in required_cols) {
+    values <- species_data[[column]]
+
+    if (!is.numeric(values) ||
+        any(!is.finite(values)) ||
+        any(values != floor(values))) {
+      stop(column, " must contain finite, non-missing integer day values.")
+    }
+  }
+
+  if (any(species_data$start_day > species_data$end_day)) {
+    stop("start_day must be on or before end_day.")
+  }
+
+  species_data
+}
+
+#' Create the time-ordered network by checking temporal overlap
+#' @export
+check_temporal_overlap <- function(species_data) {
+  edges <- list()
+  weights <- c()  # Store the edge weights (duration of overlap)
+
+  #https://github.com/ajijohn/ecoTemporalNet/issues/5
+  # Support for survey dates in calendar format
+
+  species_data <- prepare_species_data(species_data)
 
 
   for (i in 1:(nrow(species_data) - 1)) {
@@ -69,6 +135,8 @@ check_temporal_overlap <- function(species_data) {
 #' @return A networkDynamic object
 #' @export
 create_temporal_network <- function(species_data) {
+
+  species_data <- prepare_species_data(species_data)
   # Get co-occurrence edges and create the graph (time-ordered network)
   overlap_result <- check_temporal_overlap(species_data)
   edges <- overlap_result$edges
@@ -171,6 +239,8 @@ calculate_edge_persistence <- function(species_data) {
   edges <- list()
   persistence_values <- c()  # Store edge persistence (duration of overlap)
 
+  species_data <- prepare_species_data(species_data)
+
   for (i in 1:(nrow(species_data) - 1)) {
     for (j in (i + 1):nrow(species_data)) {
       species_i <- species_data[i, ]
@@ -236,6 +306,8 @@ calculate_betweenness <- function(g,
 #'   the next interval and signed separation
 #' @export
 inter_event_times <- function(species_data) {
+
+  species_data <- prepare_species_data(species_data)
   required_cols <- c("species", "start_day", "end_day")
   missing_cols <- setdiff(required_cols, names(species_data))
   if (length(missing_cols) > 0) {
@@ -486,6 +558,8 @@ memory <- function(times) {
 #’ @return Day matrix
 #' @export
 get_daywise_overlap <- function(species_data) {
+
+  species_data <- prepare_species_data(species_data)
   # Create a list of days for each species
   species_days <- lapply(1:nrow(species_data), function(i) {
     seq(species_data$start_day[i], species_data$end_day[i])
@@ -554,6 +628,7 @@ calculate_prop_edge_persistence <- function(day_matrix) {
 #' @return A data.frame with two metrics
 #' @export
 calculate_persistence_metrics <- function(g, species_data) {
+
   # Handle empty networks
   if (igraph::vcount(g) == 0) {
     return(data.frame(
@@ -561,6 +636,8 @@ calculate_persistence_metrics <- function(g, species_data) {
       avg_edge_persistence = NA
     ))
   }
+
+  species_data <- prepare_species_data(species_data)
 
   # Ensure species names match between graph and data
   nodes <- igraph::V(g)$name

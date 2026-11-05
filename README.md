@@ -1,10 +1,12 @@
 # ecoTemporalNet
 
-**ecoTemporalNet** provides a simple, lightweight toolkit for building and analyzing temporal ecological networks from species phenology data. It automates:
+**ecoTemporalNet** provides tools for building and analyzing temporal ecological networks from species phenology data. It supports:
 
 - Detection of flowering‐period overlaps between species  
 - Construction of temporal networks where edge weights represent overlap durations  
 - Computation of network metrics such as latency, memory, and burstiness  
+
+Input data should be a data frame with one row per species and columns `species`, `start_day`, and `end_day`. Day values must be finite integers, and each start must be on or before its end. Alternatively, provide `start_date` and `end_date` as `Date` values or `YYYY-MM-DD` strings; all dates must be in the same calendar year. Intervals are inclusive.
 
 ---
 
@@ -31,7 +33,6 @@ devtools::install_local("ecoTemporalNet_0.1.0.tar.gz")
 
 ```r
 library(ecoTemporalNet)
-library(igraph)
 
 # Define your species flowering windows
 species_data <- data.frame(
@@ -49,20 +50,20 @@ weights <- overlap_result$weights
 # 2. Build the temporal network (igraph)
 g <- create_temporal_network(species_data)
 
-# 3. Compute latency (shortest‐path matrix)
+# 3. Compute directed hop latency (shortest-path matrix)
 latency_mat <- calculate_latency(g)
 
-# 4. Calculate memory adjusted by a latency matrix
-#    (here: simple toy latency for demonstration)
-toy_latency <- matrix(c(0, 1, 0,
-                        0, 0, 1,
-                        0, 0, 0),
-                      nrow = 3, byrow = TRUE)
-memory_value <- calculate_memory_with_latency(species_data, toy_latency)
+# To use inverse overlap duration as the edge cost:
+strength_latency_mat <- calculate_latency(g, use_overlap_strength = TRUE)
 
-# 5. Compute burstiness of inter‐event times
+# 4. Calculate burstiness of non-negative gaps between consecutive intervals
 burst_value <- calculate_burstiness(species_data)
+
+# 5. Calculate lag-1 memory in interval gaps, discounted by network latency
+memory_value <- calculate_memory_with_latency(species_data)
 ```
+
+Some metrics return `NA` when there are too few usable observations or when the statistic is undefined.
 
 ---
 
@@ -70,17 +71,26 @@ burst_value <- calculate_burstiness(species_data)
 
 | Function | Description |
 |----------|-------------|
-| `check_temporal_overlap()` | Identifies overlap between flowering windows (inclusive) |
-| `create_temporal_network()` | Builds a **directed** temporal network where edges represent overlap |
-| `calculate_latency()` | Shortest path latency matrix (weighted by 1/overlap duration) |
-| `calculate_memory_with_latency()` | Memory index using weighted correlation by path latency |
-| `calculate_burstiness()` | Calculates burstiness of phenological durations |
-| `calculate_avg_temporal_degree()` | Average **undirected** node degree (coflowering richness) |
-| `calculate_avg_temporal_network_degree()` | Average **directed** degree (in + out edges per node) |
-| `calculate_avg_betweenness()` | Average betweenness centrality weighted by overlap |
-| `calculate_avg_closeness()` | Average closeness centrality weighted by overlap |
-| `calculate_temporal_reachability()` | Returns upstream and downstream sets for each node |
-| `calculate_persistence_metrics()` | Returns node and edge persistence (in days) |
+| `check_temporal_overlap()` | Finds inclusive pairwise overlaps and their durations; edges point from the earlier-starting to the later-starting species |
+| `create_temporal_network()` | Builds a directed `igraph` network with overlap duration as edge weight |
+| `calculate_latency()` | Directed shortest-path matrix; counts hops by default or uses inverse overlap duration when `use_overlap_strength = TRUE` |
+| `calculate_memory_with_latency()` | Computes lag-1 correlation in non-negative consecutive-interval gaps, weighted by directed network latency |
+| `calculate_burstiness()` | Calculates burstiness of non-negative gaps between consecutive intervals |
+| `calculate_overlap_burstiness()` | Calculates burstiness of pairwise overlap durations |
+| `inter_event_times()` | Orders intervals and returns their signed separation and non-negative gap |
+| `calculate_edge_persistence()` | Returns pairwise overlap durations |
+| `calculate_persistence_metrics()` | Returns average node flowering duration and average edge overlap duration |
+| `calculate_avg_temporal_degree()` | Average degree after treating the network as undirected |
+| `calculate_avg_temporal_network_degree()` | Average directed total degree (in-degree plus out-degree) |
+| `calculate_node_temporal_degree()` | Per-species degree in total, incoming, or outgoing mode |
+| `calculate_avg_betweenness()` | Average undirected betweenness, using inverse overlap duration as distance |
+| `calculate_avg_closeness()` | Average undirected closeness, using inverse overlap duration as distance |
+| `calculate_temporal_reachability()` | Returns the number of upstream and downstream reachable nodes per species |
+| `calculate_weighted_overlap_distance()` | Shortest paths using overlap duration as edge weight |
+| `calculate_overlap_hop_distance()` | Undirected shortest-path distances counted in hops |
+| `calculate_overlap_shortest_paths()` | Unweighted shortest-path matrix |
+| `calculate_prop_edge_persistence()` | Per-species proportion of flowering days with at least one coflowering species |
+| `plot_temporal_network()` | Plots a network with edge widths and labels based on overlap weights |
 
 ---
 
@@ -95,8 +105,8 @@ burst_value <- calculate_burstiness(species_data)
 - **Closeness**: how easily a species can reach or be reached
 
 ### Reachability
-- **Upstream set**: species that can reach a given node
-- **Downstream set**: species that a node can reach forward in time
+- **Upstream count**: number of nodes that can reach a given node
+- **Downstream count**: number of nodes a node can reach by following directed edges
 
 ### Persistence
 - **Node persistence**: average flowering duration per species
@@ -148,6 +158,6 @@ MIT &mdash; see the [LICENSE](LICENSE) file for details.
 
 ## About
 
-**ecoTemporalNet** enables ecologists to quantify phenological synchrony and fragmentation using time-respecting network analysis. Designed for applications in climate change ecology, alpine phen[...]
+**ecoTemporalNet** helps ecologists describe phenological overlap and temporal structure in ecological networks. It provides functions for constructing directed overlap networks and summarizing their connectivity, reachability, persistence, and timing patterns.
 
 ---

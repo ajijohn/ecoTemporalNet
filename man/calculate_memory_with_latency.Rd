@@ -21,3 +21,26 @@ Steps:
 corresponding species in the overlap network
 }
 }
+\details{
+Obtains nonnegative consecutive-interval gaps from inter_event_times()
+and directed hop distances from calculate_latency(). Adjacent gap pairs
+are weighted by 1 / (1 + d), where d connects the first gap's source species
+to the second gap's destination species. Unreachable pairs have zero weight
+and are excluded. A weighted Pearson correlation is calculated from the
+remaining pairs; insufficient pairs or zero variance produce NA.
+
+Under the intended onset-ordered overlap construction, positive gaps
+prevent directed paths from crossing the corresponding onset boundary.
+This can exclude the variation needed by the statistic and yield undefined
+results. The weighting is not a measure of elapsed-time latency.
+}
+\examples{
+library(dplyr)
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+# The current weighting can leave no usable gap variance; NA is expected.
+calculate_memory_with_latency(species_data)
+}

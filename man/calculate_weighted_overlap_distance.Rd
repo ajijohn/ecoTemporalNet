@@ -6,6 +6,28 @@
 \usage{
 calculate_weighted_overlap_distance(g)
 }
+\arguments{
+\item{g}{An igraph overlap network.}
+}
 \description{
 Function to calculate distance (shortest paths with weights representing overlap duration)
+}
+\details{
+Wraps igraph::shortest.paths(), using the graph's weight attribute as an
+additive path cost. Consequently, longer overlap durations contribute larger
+costs; weights are not inverted. The default shortest-path mode treats the
+graph as undirected. Returns a matrix of distances, not the paths themselves.
+Unreachable pairs have infinite distance. These costs do not represent
+elapsed-time travel through the flowering season.
+}
+\examples{
+library(igraph)
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+# Each overlap costs two days; the A-C distance is four.
+calculate_weighted_overlap_distance(g)
 }

@@ -21,4 +21,22 @@ needed to reach one species from another.
 \details{
 If use_overlap_strength = TRUE, edge cost is 1 / overlap_duration so
 longer overlaps imply lower traversal cost.
+
+Wraps igraph::distances() with mode = "out", following outgoing edges.
+With use_overlap_strength = FALSE, edge weights are ignored and distances
+count directed edges. With TRUE, costs are inverse overlap durations and
+must be positive and finite. Unreachable pairs have infinite distance.
+
+Latency here denotes a graph distance, not elapsed time or an earliest
+arrival time. A graph with no vertices produces a zero-by-zero matrix.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+calculate_latency(g) # A reaches C in two directed steps; C cannot reach A.
+calculate_latency(g, use_overlap_strength = TRUE) # inverse-overlap costs
 }

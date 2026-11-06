@@ -15,12 +15,33 @@ Numeric: average degree across all nodes
 \description{
 Compute average temporal degree undirected (mean number of co-flowering partners, symmetric overlaps)
 }
+\details{
+Wraps igraph::as_undirected() and igraph::degree(), then averages degree
+across graph vertices. Direction is collapsed and edge weights do not
+contribute to degree. For a simple overlap graph, degree counts distinct
+coflowering partners. The average includes only vertices present in the
+supplied graph; an empty graph returns NA. Values depend on community
+richness and flowering duration as well as relative timing.
+}
 \section{Interpretation}{
 
 \describe{
 \item{0}{No coflowering — fully isolated species}
 \item{1–2}{Species overlap with 1–2 others on average}
-\item{High}{Dense synchrony — many co-flowering partners}
+\item{Higher values}{More coflowering partners on average; depends on richness and duration}
 }
 }
 
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+calculate_avg_temporal_degree(g)
+# Including an isolated species changes the mean degree.
+with_isolate <- rbind(species_data,
+  data.frame(species = "D", start_day = 20, end_day = 22))
+calculate_avg_temporal_degree(create_temporal_network(with_isolate))
+}

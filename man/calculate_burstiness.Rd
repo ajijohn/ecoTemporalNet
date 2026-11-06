@@ -19,3 +19,21 @@ Uses gap_positive from inter_event_times():
 \item gap => positive waiting time
 }
 }
+\details{
+Uses nonnegative gaps between consecutive species in onset order from
+inter_event_times(). Overlapping or adjacent intervals contribute zero;
+positive gaps count intervening days. Applies (sd - mean) / (sd + mean)
+using the sample standard deviation. Fewer than two usable gaps or a zero
+denominator produce NA. These gaps are not necessarily periods without
+flowering anywhere in the community.
+}
+\examples{
+library(dplyr)
+species_data <- data.frame(
+  species = c("A", "B", "C", "D"),
+  start_day = c(1, 4, 10, 20),
+  end_day = c(5, 8, 15, 22)
+)
+inter_event_times(species_data)$gap_positive # 0, 1, 4, NA
+calculate_burstiness(species_data)
+}

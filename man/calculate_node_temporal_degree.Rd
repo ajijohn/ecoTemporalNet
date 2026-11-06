@@ -12,8 +12,8 @@ calculate_node_temporal_degree(g, mode = "total")
 \item{mode}{Character. One of "total" (default), "in", or "out".
 \itemize{
 \item "total": treats network as undirected (collapses direction)
-\item "in": counts incoming edges only (e.g., overlapping with species that flower later)
-\item "out": counts outgoing edges only (e.g., overlapping with species that flower earlier)
+\item "in": counts incoming edges from earlier-onset species (subject to ties)
+\item "out": counts outgoing edges to later-onset species (subject to ties)
 }}
 }
 \value{
@@ -28,12 +28,21 @@ Computes the number of overlapping flowering partners per species in a phenologi
 In an undirected network, this corresponds to the total number of species a node co-flowers with.
 In a directed network, in-degree and out-degree can reflect upstream/downstream relationships based on flowering order.
 }
+\details{
+Wraps igraph::degree(). For mode = "total", first collapses direction
+using igraph::as_undirected(); other modes are passed directly to igraph.
+Weights do not contribute. With earlier-onset-to-later-onset edges,
+incoming edges originate from earlier-starting neighbours and outgoing
+edges point to later-starting neighbours; equal-onset edges follow the
+construction convention. Only species present in the graph are returned.
+An empty graph returns an empty data frame.
+}
 \section{Interpretation}{
 
 \describe{
 \item{0}{Species does not coflower with any other species}
 \item{1–2}{Species overlaps with a few others during its phenophase}
-\item{High (>5)}{Species overlaps with many others — strong synchrony}
+\item{Higher values}{More coflowering partners; interpretation depends on richness and duration}
 \item{"in" vs "out"}{May indicate if a species tends to flower earlier or later relative to its neighbors}
 }
 }
@@ -41,10 +50,11 @@ In a directed network, in-degree and out-degree can reflect upstream/downstream 
 \examples{
 species_data <- data.frame(
   species = c("A", "B", "C"),
-  start_day = c(1, 3, 6),
-  end_day = c(5, 7, 9)
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
 )
 g <- create_temporal_network(species_data)
 calculate_node_temporal_degree(g, mode = "total")
-
+calculate_node_temporal_degree(g, mode = "in")
+calculate_node_temporal_degree(g, mode = "out")
 }

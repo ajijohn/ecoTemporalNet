@@ -15,3 +15,21 @@ A data.frame with species and proportion of flowering days with >=1 neighbor
 \description{
 For each species, calculate the proportion of flowering days spent coflowering
 }
+\details{
+Expects a binary day-by-species presence matrix with unique species column
+names and no missing entries. For each species, divides the number of its
+present days with at least one other species present by its total number
+of present days. Each day is counted once regardless of partner number.
+Species with no present days receive NA. This is a species-level coflowering
+proportion, not a mean of pairwise edge durations.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+day_matrix <- get_daywise_overlap(species_data)
+calculate_prop_edge_persistence(day_matrix)
+# Do not substitute a survey matrix containing NA for this binary input.
+}

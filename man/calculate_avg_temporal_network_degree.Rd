@@ -15,3 +15,27 @@ Numeric: average number of edges (in + out) per node
 \description{
 Calculate average total degree (in + out) in a directed network
 }
+\details{
+Wraps igraph::degree() separately for incoming and outgoing edges and
+averages their sum across graph vertices. Weights are ignored. Each
+directed edge contributes to both its source's out-degree and its target's
+in-degree, so the mean total degree is twice the number of edges divided
+by the number of vertices. A graph with no vertices returns NA.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+calculate_avg_temporal_network_degree(g)
+# The survey community summary reuses this function for onset-directed graphs.
+surveys <- data.frame(
+  species = c("A", "A", "B", "B"),
+  date = c("2026-04-01", "2026-04-05", "2026-04-03", "2026-04-07"),
+  presence = 1
+)
+analysis <- prepare_phenology(surveys, method = "interval")
+summarise_phenology_networks(analysis)$mean_degree
+}

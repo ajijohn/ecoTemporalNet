@@ -15,3 +15,17 @@ Numeric scalar in \link{-1, 1}, or NA if too few events
 \description{
 Memory metric: lag-1 correlation of inter-event durations
 }
+\details{
+Calls interevent_durations() to sort event times and form successive
+durations, then computes the Pearson correlation between adjacent durations
+with stats::cor(). Returns NA when there are fewer than two durations or
+when a lagged vector has zero standard deviation. With exactly two
+durations, lagged vectors each contain one value and the current
+implementation can error. This statistic describes event-time ordering,
+not network reachability.
+}
+\examples{
+times <- c(1, 3, 7, 12, 20, 23)
+interevent_durations(times)
+memory(times)
+}

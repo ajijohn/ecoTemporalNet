@@ -6,6 +6,27 @@
 \usage{
 calculate_overlap_shortest_paths(g)
 }
+\arguments{
+\item{g}{An igraph overlap network.}
+}
 \description{
 Function to compute shortest paths between all species pairs
+}
+\details{
+Wraps igraph::shortest.paths() and returns a matrix of shortest-path
+lengths, not vertex or edge sequences. Default mode treats edges as
+undirected. Because weights = NULL, an existing weight attribute is used
+as additive cost; otherwise paths are unweighted. Unreachable pairs have
+infinite distance.
+}
+\examples{
+library(igraph)
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+# Returns distances, using overlap weights and ignoring direction.
+calculate_overlap_shortest_paths(g)
 }

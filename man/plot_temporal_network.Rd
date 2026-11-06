@@ -12,3 +12,29 @@ plot_temporal_network(g)
 \description{
 Plot a snapshot of the temporal network
 }
+\details{
+Uses igraph conversion and plotting with a Fruchterman-Reingold layout. Edge
+labels display overlap durations; widths are scaled relative to the largest
+edge weight, to a maximum of five. This is a display of the aggregate graph,
+not a series of daily snapshots.
+
+The current plotting implementation rebuilds a directed graph from the edge
+list. Isolated vertices are therefore omitted from the display, and undirected
+input is displayed with arrows. The underlying supplied graph is unchanged.
+Use igraph::plot.igraph() directly when displaying isolates or undirected graphs.
+A graph with at least one edge and positive weights is expected.
+}
+\examples{
+library(igraph)
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+plot_temporal_network(g)
+
+# Use igraph directly for an undirected display.
+g_undirected <- create_temporal_network(species_data, direction = "undirected")
+igraph::plot.igraph(g_undirected)
+}

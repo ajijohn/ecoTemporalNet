@@ -4,14 +4,92 @@
 \alias{create_temporal_network}
 \title{Create a temporal ecological network}
 \usage{
-create_temporal_network(species_data)
+create_temporal_network(
+  species_data = NULL,
+  direction = c("onset", "undirected"),
+  presence_matrix = NULL
+)
 }
 \arguments{
-\item{species}{A data.frame of nodes}
+\item{species_data}{A data.frame of species intervals, or NULL when supplying
+presence_matrix.}
+
+\item{direction}{"onset" (default) or "undirected".}
+
+\item{presence_matrix}{Optional daily matrix of 0, 1, or NA, with unique species
+column names. Rows must be consecutive days in chronological order. Supply
+this instead of species_data for survey observations or repeated episodes.}
 }
 \value{
-A networkDynamic object
+An igraph object
 }
 \description{
 Create a temporal ecological network
+}
+\details{
+The interval and survey interfaces share one graph constructor and the
+inclusive overlap calculation in check_temporal_overlap(). Supply species_data
+or presence_matrix, not both. Every supplied species is retained as a vertex,
+including isolates and species in an edgeless community.
+
+Interval inputs assume continuous presence of the selected phenological stage
+between both endpoints. Daily input requires rows representing consecutive
+calendar days, ordered chronologically. Include missing survey days explicitly
+as NA rows; never remove them and compress time. Unique nonempty species column
+names are required. The matrix interface uses row position for elapsed days;
+when ISO date row names are supplied, consecutive chronological dates are checked.
+Use prepare_phenology() to create this matrix from long-format survey records.
+
+Daily input is split into confirmed continuous positive episodes. Both zero and
+NA interrupt episodes; NA remains unknown, not inferred absence. The existing
+interval overlap function calculates episode intersections, which are summed
+once per species pair without filling gaps. Default direction is earlier to
+later first presence across the entire window. Equal onsets use earlier last
+presence, then species name; this tie convention does not establish biological
+precedence. Repeated episodes share that species-level direction. Set direction
+to "undirected" to represent symmetric co-occurrence instead.
+
+Both weight and overlap_days store shared presence days. Daily input additionally
+stores jointly_known_days and overlap_jaccard: overlap divided by the number of
+days with either species present, restricted to jointly known days. Missingness
+therefore affects support for overlap estimates. An absent edge in an incomplete
+survey does not establish biological non-overlap. Graph weights describe temporal
+co-occurrence opportunity rather than measured ecological interactions.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+igraph::as_data_frame(g)
+
+# Direction is optional; overlap weights are unchanged.
+g_undirected <- create_temporal_network(species_data, direction = "undirected")
+igraph::is_directed(g_undirected)
+
+# Species without overlaps are retained.
+with_isolate <- rbind(species_data,
+  data.frame(species = "D", start_day = 20, end_day = 22))
+g_with_isolate <- create_temporal_network(with_isolate)
+igraph::degree(g_with_isolate)["D"] # zero
+
+# Daily survey input: rows are consecutive days; NA means unknown.
+presence <- cbind(
+  A = c(1L, NA_integer_, 0L, 1L, 1L),
+  B = c(0L, 1L, 1L, 1L, 0L)
+)
+rownames(presence) <- as.character(as.Date("2026-04-01") + 0:4)
+g_survey <- create_temporal_network(presence_matrix = presence)
+igraph::as_data_frame(g_survey) # one shared day; the missing day is not filled
+
+# Long-format records can use the integrated survey workflow.
+surveys <- data.frame(
+  species = rep(c("A", "B"), each = 3),
+  date = rep(c("2026-04-01", "2026-04-03", "2026-04-05"), 2),
+  presence = c(1, 1, 0, 0, 1, 1)
+)
+analysis <- prepare_phenology(surveys)
+analysis$groups[[1]]$graph
 }

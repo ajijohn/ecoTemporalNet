@@ -7,8 +7,28 @@
 calculate_edge_persistence(species_data)
 }
 \arguments{
-\item{species}{Species dataframe}
+\item{species_data}{Species dataframe}
 }
 \description{
 Create a function to calculate edge persistence (pairwise overlap duration)
+}
+\details{
+Delegates to check_temporal_overlap() rather than maintaining a second
+intersection algorithm. Accepts one continuous interval per species, in numeric
+days or single-calendar-year dates. Inclusive overlap days are returned for
+overlapping pairs only. Pair labels follow onset order and its end-date/name
+tie convention; overlap duration itself is symmetric. With no overlaps, edges
+is NULL and persistence is empty. To obtain overlap durations for incomplete
+or repeated-episode surveys, build a graph with create_temporal_network() or
+prepare_phenology() and inspect its weight attribute.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+calculate_edge_persistence(species_data)
+# Edge persistence reuses the same overlaps and ordering.
+check_temporal_overlap(species_data)
 }

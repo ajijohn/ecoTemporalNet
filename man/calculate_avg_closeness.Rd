@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{calculate_avg_closeness}
 \alias{calculate_avg_closeness}
-\title{Calculate average time-dependent closeness centrality}
+\title{Calculate average closeness in the aggregated overlap network}
 \usage{
 calculate_avg_closeness(g)
 }
@@ -20,11 +20,19 @@ through overlapping flowering periods.
 \details{
 The function inverts edge weights (1/weight), treating stronger overlaps as shorter paths.
 The graph is treated as undirected to reflect mutual co-flowering.
+
+Collapses direction using igraph::as.undirected(), summing weights when
+edges are merged, then calls igraph::closeness() with inverse weights and
+normalized = FALSE. Node scores are inverse sums of distances to reachable
+other vertices. Unreachable vertices are omitted by igraph; a vertex with
+no reachable neighbours has NaN closeness. The arithmetic mean does not
+remove missing or NaN values. A graph with no vertices returns NA.
+This is centrality on the aggregated graph, not elapsed-time accessibility.
 }
 \section{Interpretation}{
 
 \describe{
-\item{0}{Node is isolated — no access to other species}
+\item{NaN}{An isolated vertex has undefined closeness and propagates to the mean}
 \item{Low}{Species is far from many others — few or weak overlaps}
 \item{High}{Species is close to many others — central in phenological timing}
 }
@@ -33,10 +41,14 @@ The graph is treated as undirected to reflect mutual co-flowering.
 \examples{
 species_data <- data.frame(
   species = c("A", "B", "C"),
-  start_day = c(1, 3, 6),
-  end_day = c(5, 7, 9)
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
 )
 g <- create_temporal_network(species_data)
 calculate_avg_closeness(g)
 
+# An isolated species makes the current arithmetic mean NaN.
+with_isolate <- rbind(species_data,
+  data.frame(species = "D", start_day = 20, end_day = 22))
+calculate_avg_closeness(create_temporal_network(with_isolate))
 }

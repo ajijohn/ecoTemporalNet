@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{calculate_avg_betweenness}
 \alias{calculate_avg_betweenness}
-\title{Calculate average time-dependent betweenness centrality}
+\title{Calculate average betweenness in the aggregated overlap network}
 \usage{
 calculate_avg_betweenness(g)
 }
@@ -20,23 +20,29 @@ indicating its role as a temporal bridge or connector between species that other
 \details{
 The function assumes that species with longer overlap (higher edge weight) are more strongly connected.
 To prioritize such overlaps, the function inverts weights (i.e., 1/weight) for shortest path calculations.
+
+Collapses direction using igraph::as.undirected(), summing weights when
+edges are merged, and calls igraph::betweenness() with inverse weights and
+normalized = FALSE. Returns the arithmetic mean of raw node betweenness.
+Positive finite overlap weights are expected. This is a static centrality
+of the aggregated overlap graph, not an explicit time-dependent path
+calculation. Scores depend on graph size and structure; a graph with no
+vertices returns NA.
 }
 \section{Interpretation}{
 
 \describe{
 \item{0}{No node acts as a bridge — all paths are direct or disconnected}
-\item{Low (~0.1–0.5)}{Some species act as connectors between clusters, but many are peripheral}
-\item{High (>1)}{One or more species serve as important bridges — linking phenological modules or stages}
+\item{Higher values}{More shortest-path mediation on average; values depend on graph size, structure, and weights}
 }
 }
 
 \examples{
 species_data <- data.frame(
   species = c("A", "B", "C"),
-  start_day = c(1, 3, 6),
-  end_day = c(5, 7, 9)
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
 )
 g <- create_temporal_network(species_data)
-calculate_avg_betweenness(g)
-
+calculate_avg_betweenness(g) # averages raw undirected betweenness
 }

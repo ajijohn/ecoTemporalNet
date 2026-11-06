@@ -7,7 +7,7 @@
 calculate_temporal_reachability(g)
 }
 \arguments{
-\item{g}{A directed igraph object from \code{create_temporal_network()}, with time-respecting edge direction}
+\item{g}{A directed igraph object from \code{create_temporal_network()}.}
 }
 \value{
 A data.frame with species name, upstream size, and downstream size
@@ -15,15 +15,24 @@ A data.frame with species name, upstream size, and downstream size
 \description{
 For each species (node), computes the number of other species it can reach
 (downstream set) and the number of species that can reach it (upstream set)
-via time-respecting paths in a directed co-flowering network.
+via directed paths in the aggregated onset-ordered co-flowering network.
+}
+\details{
+Wraps igraph::subcomponent() with outgoing and incoming modes and excludes
+the focal vertex from each count. Weights are ignored. Downstream counts
+vertices reachable along outgoing edges; upstream counts vertices with a
+path to the focal species. Interpretation follows the supplied graph's
+edge-orientation convention. The calculation uses aggregate graph paths,
+without departure times or traversal durations. An empty graph returns
+an empty data frame.
 }
 \examples{
 species_data <- data.frame(
   species = c("A", "B", "C"),
-  start_day = c(1, 3, 6),
-  end_day = c(5, 7, 9)
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
 )
-g <- create_temporal_network(species_data)  # assuming edge direction is time-respecting
+g <- create_temporal_network(species_data)
 calculate_temporal_reachability(g)
-
+# A reaches B and C; C has no downstream species.
 }

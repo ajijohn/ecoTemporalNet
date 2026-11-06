@@ -4,16 +4,59 @@
 \alias{calculate_persistence_metrics}
 \title{Compute average node and edge persistence from the network}
 \usage{
-calculate_persistence_metrics(g, species_data)
+calculate_persistence_metrics(g, species_data = NULL)
 }
 \arguments{
 \item{g}{An igraph object created from \code{create_temporal_network}}
 
-\item{species_data}{The original data.frame with species, start_day, and end_day}
+\item{species_data}{The original data.frame with species, start_day, and end_day,
+or NULL to calculate edge persistence only (node persistence is then NA).}
 }
 \value{
 A data.frame with two metrics
 }
 \description{
 Compute average node and edge persistence from the network
+}
+\details{
+With species_data supplied, node persistence is the inclusive interval duration
+averaged over its rows whose species occur in the graph. All species in an
+interval graph created by create_temporal_network(), including isolates, now
+contribute. Dates are converted through the shared preparation helper.
+
+With species_data = NULL, node persistence is NA and only edge persistence is
+calculated. This graph-only mode is used by the survey workflow so it does not
+infer a continuous species interval from incomplete or repeated-episode records.
+It does not estimate node duration from graph edges.
+
+Edge persistence retains the original calculation: convert to undirected with
+igraph::as_undirected(), sum weights of collapsed edges, then average edge
+weights. In graphs produced by the shared constructor there is one edge per
+overlapping pair, with weight equal to total shared presence days. A graph with
+no vertices returns NA for both metrics. A nonempty edgeless graph retains its
+node-duration summary when species_data is supplied, with edge persistence NA.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+# Interval input supplies both node and edge persistence.
+calculate_persistence_metrics(g, species_data)
+
+# Graph-only mode supplies edge persistence; node persistence is NA.
+calculate_persistence_metrics(g)
+
+# The same function handles a survey-derived graph.
+presence <- cbind(A = c(1, NA, 1), B = c(0, 1, 1))
+g_survey <- create_temporal_network(presence_matrix = presence)
+calculate_persistence_metrics(g_survey)
+
+# With no overlaps, species durations are still available.
+isolated <- data.frame(
+  species = c("X", "Y"), start_day = c(1, 10), end_day = c(3, 12)
+)
+calculate_persistence_metrics(create_temporal_network(isolated), isolated)
 }

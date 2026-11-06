@@ -6,6 +6,31 @@
 \usage{
 calculate_overlap_hop_distance(g)
 }
+\arguments{
+\item{g}{An igraph overlap network.}
+}
 \description{
 Function to calculate distance (smallest number of nodes, hops, between species)
+}
+\details{
+Wraps igraph::shortest.paths() with mode = "all", ignoring edge direction.
+In the current implementation, weights = NULL uses the graph's weight
+attribute when present. Thus a graph created by create_temporal_network()
+produces overlap-weighted distances rather than unweighted hop counts.
+Without a weight attribute, distances count edges. Unreachable pairs have
+infinite distance.
+}
+\examples{
+library(igraph)
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+# Current implementation uses existing weights: A-C distance is four.
+calculate_overlap_hop_distance(g)
+# Remove the weight attribute for unweighted hops: A-C distance is two.
+g_unweighted <- igraph::delete_edge_attr(g, "weight")
+calculate_overlap_hop_distance(g_unweighted)
 }

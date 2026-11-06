@@ -20,3 +20,26 @@ A named numeric vector of betweenness values
 \description{
 Calculate node betweenness centrality in the directed overlap network
 }
+\details{
+Wraps igraph::betweenness() with directed = TRUE. With
+use_overlap_strength = TRUE, inverse overlap durations are shortest-path
+costs, so longer overlaps have lower cost. With FALSE, the current
+implementation passes weights = NULL, which uses an existing graph weight
+attribute rather than disabling weights. The normalized argument is passed
+directly to igraph. A graph with no vertices returns an empty named vector.
+
+This is betweenness on the aggregated overlap graph, not a calculation of
+time-dependent movement or elapsed-time paths.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+g <- create_temporal_network(species_data)
+calculate_betweenness(g)
+calculate_betweenness(g, normalized = FALSE)
+# FALSE currently uses existing overlap weights, not unweighted paths.
+calculate_betweenness(g, use_overlap_strength = FALSE)
+}

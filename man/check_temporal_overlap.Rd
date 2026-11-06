@@ -6,6 +6,48 @@
 \usage{
 check_temporal_overlap(species_data)
 }
+\arguments{
+\item{species_data}{A data.frame with species and start_day/end_day, or
+start_date/end_date within a single calendar year.}
+}
 \description{
 Create the time-ordered network by checking temporal overlap
+}
+\details{
+Accepts one continuous interval per species, using integer start_day/end_day
+columns or start_date/end_date columns of Date values or YYYY-MM-DD strings.
+Date columns must refer to one calendar year and take precedence over day
+columns. Both endpoints count as present; intervals meeting on a shared day
+have one day of overlap.
+
+The shared input helper sorts by start_day, end_day, then species. Each pair
+is examined once with the original inclusive interval-intersection formula.
+Edges point from earlier to later onset. Equal onsets use earlier end, then
+species name: this is a deterministic convention, not biological precedence.
+Duplicate species identifiers are rejected. Zero or one species yields no
+edges. With no overlaps, edges is NULL and weights is empty.
+
+This function is also the overlap engine for survey episodes supplied through
+create_temporal_network(). For repeated episodes or incomplete daily surveys,
+use that function's presence_matrix input or prepare_phenology(), rather than
+collapsing records into a single first-to-last presence interval.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 7),
+  end_day = c(5, 8, 10)
+)
+check_temporal_overlap(species_data)
+
+# Sorting the rows differently does not change the result.
+check_temporal_overlap(species_data[c(3, 1, 2), ])
+
+# Calendar dates use the same inclusive-day calculation.
+dates <- data.frame(
+  species = c("A", "B"),
+  start_date = c("2026-04-01", "2026-04-04"),
+  end_date = c("2026-04-05", "2026-04-08")
+)
+check_temporal_overlap(dates) # A -> B, two shared days
 }

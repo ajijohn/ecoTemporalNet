@@ -20,3 +20,20 @@ all overlapping species pairs. It uses the classic burstiness formula:
 where \eqn{\mu} is the mean overlap duration and \eqn{\sigma} is the
 standard deviation of overlap durations.
 }
+\details{
+Uses inclusive overlap durations returned by calculate_edge_persistence(),
+not waiting times between events. The standard deviation is calculated with
+stats::sd(), using the sample standard-deviation convention. The result
+summarizes heterogeneity among overlapping pairs; pairs sharing a species
+are not independent observations. Fewer than two durations or undefined
+moments produce NA.
+}
+\examples{
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 6),
+  end_day = c(5, 8, 10)
+)
+calculate_edge_persistence(species_data)$persistence # two overlap durations
+calculate_overlap_burstiness(species_data)
+}

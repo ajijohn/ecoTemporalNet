@@ -15,6 +15,33 @@ the next interval and signed separation
 }
 \description{
 Positive values mean a gap.
-Zero means intervals touch.
+Zero means consecutive intervals have no intervening unoccupied day.
 Negative values mean overlap.
+}
+\details{
+Accepts numeric day columns or date columns within one calendar year and
+orders rows by start_day, end_day, and species. Intervals include both
+endpoints. Signed separation is next_start_day - end_day - 1: positive
+values count intervening unoccupied days, zero indicates consecutive days
+without a shared day, and negative values indicate overlap.
+
+Actual overlap uses the earlier end date, including for nested intervals.
+Its magnitude need not equal the absolute signed separation. Comparisons
+are between consecutive rows in onset order, not gaps in the union of all
+species' intervals. The last row has missing next-interval summaries.
+}
+\examples{
+library(dplyr)
+species_data <- data.frame(
+  species = c("A", "B", "C"),
+  start_day = c(1, 4, 10),
+  end_day = c(5, 8, 15)
+)
+inter_event_times(species_data) # signed gaps: -2, 1, NA
+
+# A short interval nested within a longer one shares only its own days.
+nested <- data.frame(
+  species = c("A", "B"), start_day = c(1, 4), end_day = c(10, 5)
+)
+inter_event_times(nested) # overlap duration: 2, NA
 }

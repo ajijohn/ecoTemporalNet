@@ -9,13 +9,8 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
-
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(ecoTemporalNet)
-library(dplyr)
 library(ggplot2)
 library(readr)
 library(knitr)
@@ -23,33 +18,43 @@ library(knitr)
 
 # Overview
 
-This vignette demonstrates how to use `ecoTemporalNet` to build and analyze
-temporal overlap networks from frog phenology data.
+This vignette builds temporal overlap networks from frog phenology intervals.
+Each file is treated as one community in a single calendar year on a common day
+scale. Separate sites and years before analysis if a file combines groups.
 
-# Load Data
+The interval constructor requires one interval per species. These data can have
+repeated species records, so we use its daily `presence_matrix` interface. A
+species is present whenever any of its recorded intervals is active. Overlapping
+records are counted once, while gaps between separate episodes are preserved.
 
-```{r}
+This assumes the intervals define continuous presence and that days outside
+their union are absent within the analysis window. It does not establish absence
+from missing surveys. For raw survey observations with unknown dates, use
+`prepare_phenology()` instead of inferring intervals or replacing unknowns with zero.
+
+# Load data
+
+```{r load-data}
 frog1 <- readr::read_csv(
   system.file("extdata", "frogcomtest1.csv", package = "ecoTemporalNet"),
   show_col_types = FALSE
 )
-
 frog2 <- readr::read_csv(
   system.file("extdata", "frogcomtest2.csv", package = "ecoTemporalNet"),
   show_col_types = FALSE
 )
-
 frog3 <- readr::read_csv(
   system.file("extdata", "frogcomtest3.csv", package = "ecoTemporalNet"),
   show_col_types = FALSE
 )
-
 knitr::kable(head(frog1))
 ```
 
-# Plot Phenology
+# Plot phenology
 
-```{r}
+Repeated intervals for a species appear on the same species row.
+
+```{r phenology-plot}
 ggplot(frog1, aes(
   x = start_day,
   xend = end_day + 0.5,
@@ -60,26 +65,129 @@ ggplot(frog1, aes(
   theme_classic()
 ```
 
-# Build Network
+# Convert intervals to daily presence
 
-```{r}
-g1 <- create_temporal_network(frog1)
-plot(g1,
-     vertex.label = igraph::V(g1)$name,
-     edge.width = igraph::E(g1)$weight / 5)
+Reuse `get_daywise_overlap()` to expand interval records. Combine repeated-species
+columns by taking their union, and include intervening empty days so matrix rows
+represent consecutive calendar days.
+
+```{r interval-to-presence}
+frog_presence_matrix <- function(intervals) {
+  required <- c("species", "start_day", "end_day")
+  if (!is.data.frame(intervals) || nrow(intervals) == 0L ||
+      !all(required %in% names(intervals))) {
+    stop("Supply a nonempty interval table with species, start_day, and end_day.")
+  }
+
+  expanded <- get_daywise_overlap(intervals)
+  represented_days <- as.integer(rownames(expanded))
+  days <- seq.int(min(represented_days), max(represented_days))
+  species <- sort(unique(colnames(expanded)))
+
+  presence <- matrix(
+    0L, nrow = length(days), ncol = length(species),
+    dimnames = list(as.character(days), species)
+  )
+  for (sp in species) {
+    records <- expanded[, colnames(expanded) == sp, drop = FALSE]
+    presence[rownames(expanded), sp] <- as.integer(rowSums(records) > 0L)
+  }
+  presence
+}
+
+frog_presence <- lapply(
+  list(frog1 = frog1, frog2 = frog2, frog3 = frog3),
+  frog_presence_matrix
+)
+```
+
+Each matrix has one column per species, not per record. Its analysis window runs
+from the first to last represented day. A common explicit study window is needed
+for comparisons of seasonal coverage between communities.
+
+# Build networks
+
+```{r build-networks}
+frog_networks <- lapply(frog_presence, function(presence) {
+  create_temporal_network(presence_matrix = presence)
+})
+g1 <- frog_networks$frog1
+g1
+```
+
+Edges point from earlier to later first presence. Equal onsets use earlier last
+presence, then species name. This is a tie-breaking convention, not evidence of
+biological precedence. For repeated episodes, direction uses first and last
+presence across the whole window, while weights count only shared positive days.
+All species remain in the graph, including isolates.
+
+Plot directly with igraph so isolated vertices also appear:
+
+```{r network-plot}
+igraph::plot.igraph(
+  g1,
+  vertex.label = igraph::V(g1)$name,
+  edge.width = igraph::E(g1)$weight / 5
+)
+```
+
+For symmetric co-occurrence, use the undirected option:
+
+```{r undirected-network}
+g1_undirected <- create_temporal_network(
+  presence_matrix = frog_presence$frog1,
+  direction = "undirected"
+)
 ```
 
 # Metrics
 
-```{r}
-calculate_edge_persistence(frog1)
+The edge table provides pairs and their total shared days. This replaces
+`calculate_edge_persistence(frog1)`, which requires one interval per species.
+Graph-only persistence reuses the package's summary without inventing a continuous
+species interval.
+
+```{r network-metrics}
+edge_table <- igraph::as_data_frame(g1, what = "edges")
+knitr::kable(edge_table[c("from", "to", "weight")])
+calculate_persistence_metrics(g1)
 calculate_latency(g1)
-calculate_burstiness(frog1)
-calculate_memory_with_latency(frog1)
+calculate_avg_temporal_network_degree(g1)
+calculate_node_temporal_degree(g1, mode = "total")
 ```
 
-# Session Info
+Graph-only average node persistence is `NA`: a first-to-last span would incorrectly
+include gaps between episodes. Latency counts directed overlap steps, not elapsed
+days. An isolated species has degree zero and cannot reach other species.
 
-```{r}
+The original gap burstiness and latency-weighted memory calls are omitted here:
+consecutive repeated-species records are not automatically a well-defined
+species-level event sequence. The current latency-weighted memory function also
+has the degeneracy described in its documentation. Define the event sequence and
+its ecological interpretation before applying those statistics.
+
+Summarize the other files with the same functions:
+
+```{r community-summaries}
+community_metrics <- do.call(rbind, lapply(names(frog_networks), function(name) {
+  g <- frog_networks[[name]]
+  data.frame(
+    community = name,
+    n_species = igraph::vcount(g),
+    n_edges = igraph::ecount(g),
+    mean_degree = calculate_avg_temporal_network_degree(g),
+    mean_overlap_days = calculate_persistence_metrics(g)$avg_edge_persistence
+  )
+}))
+rownames(community_metrics) <- NULL
+knitr::kable(community_metrics)
+```
+
+These are descriptive summaries, not tests of community differences. Consider
+species pools, study windows and survey effort before interpreting differences.
+
+# Session info
+
+```{r session-info}
 sessionInfo()
 ```

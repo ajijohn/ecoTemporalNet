@@ -1,0 +1,355 @@
+---
+title: "From survey records to phenological networks"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{From survey records to phenological networks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+This tutorial follows a daily flowering survey through data preparation,
+onset-directed network construction, site comparisons, and a duration-preserving
+reference model. The survey functions reuse ecoTemporalNet's interval overlap,
+graph construction, degree, and persistence functions.
+
+The data are synthetic. Presence refers to the selected phenological stage
+(here, flowering), not to whether the organism exists at the site. Graph edges
+represent temporal co-occurrence opportunity, not measured ecological interactions.
+
+## Load the package
+
+After adding the new functions to ecoTemporalNet and installing it:
+
+
+``` r
+library(ecoTemporalNet)
+```
+
+## Prepare survey records
+
+Use one row per species, date, and site. The `presence` column distinguishes:
+
+- `1`: the species was observed flowering.
+- `0`: the species was surveyed and observed not flowering.
+- `NA` or an omitted species/date row: flowering status is unknown.
+
+A missing record must not be turned into zero unless the survey design actually
+establishes absence. If surveys include multiple individuals, aggregate them to
+a species-level status using an explicit rule before this workflow. Filter to
+one phenological stage at a time.
+
+Create complete daily observations for three species at two sites:
+
+
+``` r
+observations <- expand.grid(
+  species = c("A", "B", "C"),
+  date = as.Date("2026-04-01") + 0:9,
+  site = c("north", "south"),
+  stringsAsFactors = FALSE
+)
+day <- as.integer(observations$date - as.Date("2026-04-01")) + 1L
+observations$presence <- as.integer(
+  (observations$species == "A" & day <= 4L) |
+  (observations$species == "B" & day >= 3L & day <= 7L) |
+  (observations$species == "C" & day >= 8L)
+)
+
+# Move species A later at the southern site, preserving its four-day duration.
+idx <- observations$site == "south" & observations$species == "A"
+observations$presence[idx] <- as.integer(day[idx] >= 6L & day[idx] <= 9L)
+
+head(observations)
+#>   species       date  site presence
+#> 1       A 2026-04-01 north        1
+#> 2       B 2026-04-01 north        0
+#> 3       C 2026-04-01 north        0
+#> 4       A 2026-04-02 north        1
+#> 5       B 2026-04-02 north        0
+#> 6       C 2026-04-02 north        0
+```
+
+The northern site has A flowering on days 1–4, B on days 3–7, and C on days
+8–10. The southern site shifts A to days 6–9. This produces different overlap
+patterns without changing species A's flowering duration.
+
+## Build onset-directed networks
+
+
+``` r
+analysis <- prepare_phenology(observations)
+```
+
+The function separates records by site and calendar year. Without an explicit
+`observation_window`, each group uses its first and last survey dates. The
+`observed` method is the default: unknown days stay unknown, and only confirmed
+shared presence contributes to edges. No days between surveys are filled.
+
+Edges point from earlier to later first presence. Equal onsets use earlier last
+presence, then species name. That rule is deterministic; it does not establish
+biological precedence between species with tied onsets. When flowering has
+multiple episodes, direction uses the species' first and last presence across
+the whole window, while overlap counts only confirmed positive episodes.
+
+All recorded species remain as graph vertices, including isolates. Here species
+C is isolated in the northern network because it starts after B ends.
+
+
+``` r
+analysis$settings
+#> $method
+#> [1] "observed"
+#> 
+#> $observation_window
+#> NULL
+#> 
+#> $direction
+#> [1] "onset"
+#> 
+#> $directed
+#> [1] TRUE
+#> 
+#> $onset_ties
+#> [1] "earlier last presence, then species name"
+#> 
+#> $weight
+#> [1] "overlap_days"
+#> 
+#> $missing
+#> [1] "unknown; interval mode reconstructs species with positive records"
+analysis$groups[[1]]$metadata
+#>    site year start_date   end_date
+#> 1 north 2026 2026-04-01 2026-04-10
+igraph::as_data_frame(analysis$groups[[1]]$graph)
+#>   from to weight overlap_days jointly_known_days overlap_jaccard
+#> 1    A  B      2            2                 10       0.2857143
+```
+
+Group metadata identifies the site/year. The northern graph has A → B with two
+shared days. Species C remains a vertex even though it is absent from the edge
+table. `weight` and `overlap_days` both count shared days; `jointly_known_days`
+records observation support, and `overlap_jaccard` uses jointly known days only.
+
+Each group also stores `observations`, `observed_presence`, analysis `presence`,
+calendar `dates`, positive `intervals`, and `summary`. The original input and
+preparation settings are retained at the top level.
+
+## Compare community and species summaries
+
+
+``` r
+community <- summarise_phenology_networks(analysis)
+community[c("site", "year", "n_species", "window_days", "n_edges",
+            "mean_degree", "mean_overlap_days", "days_with_presence",
+            "known_empty_days", "unresolved_days")]
+#>    site year n_species window_days n_edges mean_degree mean_overlap_days
+#> 1 north 2026         3          10       1   0.6666667                 2
+#> 2 south 2026         3          10       2   1.3333333                 2
+#>   days_with_presence known_empty_days unresolved_days
+#> 1                 10                0               0
+#> 2                  8                2               0
+```
+
+The north has one edge and ten days with at least one species flowering. The
+south has two edges but only eight flowering days: more overlap does not
+necessarily mean better seasonal coverage. Species richness and study window
+are equal here, but they need checking in real comparisons.
+
+
+``` r
+species <- summarise_phenology_networks(analysis, level = "species")
+species[c("site", "species", "degree", "in_degree", "out_degree",
+          "presence_days", "unknown_days", "exclusive_presence_days")]
+#>    site species degree in_degree out_degree presence_days unknown_days
+#> 1 north       A      1         0          1             4            0
+#> 2 north       B      1         1          0             5            0
+#> 3 north       C      0         0          0             3            0
+#> 4 south       A      2         1          1             4            0
+#> 5 south       B      1         0          1             5            0
+#> 6 south       C      1         1          0             3            0
+#>   exclusive_presence_days
+#> 1                       2
+#> 2                       3
+#> 3                       3
+#> 4                       0
+#> 5                       3
+#> 6                       1
+```
+
+Degree counts partners. Incoming and outgoing degree follow onset direction.
+Exclusive presence days require the focal species to be present and all other
+recorded species to be known absent. These quantities describe the recorded
+species pool, which may not contain every species in the community. Labelled
+site/year summaries provide descriptive comparisons, not independent-replicate
+assumptions or statistical tests of site differences.
+
+## Choose an undirected representation
+
+For symmetric coflowering questions, choose the undirected option:
+
+
+``` r
+symmetric <- prepare_phenology(observations, direction = "undirected")
+igraph::is_directed(analysis$groups[[1]]$graph)
+#> [1] TRUE
+igraph::is_directed(symmetric$groups[[1]]$graph)
+#> [1] FALSE
+```
+
+Presence, overlap duration, and flowering coverage are unchanged. For these
+simple graphs, total degree also agrees between representations. Connectance
+uses different denominators: `n * (n - 1)` directed pairs versus
+`n * (n - 1) / 2` undirected pairs. Onset-directed connectance cannot exceed
+0.5 because only one direction is retained for each overlapping pair. Do not
+compare connectance across direction settings as if they had the same scale.
+
+## Compare against randomized flowering schedules
+
+
+``` r
+reference <- test_phenological_structure(analysis, nsim = 199, seed = 42)
+reference$summary[c("site", "metric", "observed", "null_mean",
+                    "null_lower", "null_upper", "n_undefined",
+                    "standardized_effect", "p_upper", "p_lower")]
+#>    site            metric  observed null_mean null_lower null_upper n_undefined
+#> 1 north       mean_degree 0.6666667 1.5142379  0.6666667        2.0           0
+#> 2 north       connectance 0.1666667 0.3785595  0.1666667        0.5           0
+#> 3 north mean_overlap_days 2.0000000 2.4103853  1.0000000        4.0           0
+#> 4 north    coverage_lower 1.0000000 0.7487437  0.5000000        1.0           0
+#> 5 south       mean_degree 1.3333333 1.4673367  0.6666667        2.0           0
+#> 6 south       connectance 0.3333333 0.3668342  0.1666667        0.5           0
+#> 7 south mean_overlap_days 2.0000000 2.4731993  1.5000000        4.0           0
+#> 8 south    coverage_lower 0.8000000 0.7532663  0.5000000        1.0           0
+#>   standardized_effect p_upper p_lower
+#> 1          -1.5978777   1.000   0.220
+#> 2          -1.5978777   1.000   0.220
+#> 3          -0.5863698   0.805   0.440
+#> 4           1.7909108   0.070   1.000
+#> 5          -0.2408037   0.735   0.535
+#> 6          -0.2408037   0.735   0.535
+#> 7          -0.7004799   0.865   0.400
+#> 8           0.3393405   0.510   0.725
+```
+
+The reference model preserves each species' flowering duration and independently
+samples a feasible onset inside the group's observation window. Species with
+no presence stay absent. Intervals neither wrap around nor extend beyond the
+window. Each simulated graph uses the same constructor and metrics as the
+observed graph; onset directions are recalculated, not held fixed.
+
+The example uses 199 replicates to run quickly; choose a simulation count suited
+to the desired precision in an actual analysis. The supplied seed reproduces
+results without altering the caller's random-number state.
+
+Reference quantiles describe the simulated distribution, not confidence intervals
+for an estimated ecological effect. Standardized effects are undefined when null
+variance is zero. Mean overlap is undefined in edgeless graphs; the output counts
+undefined replicates and withholds tail probabilities when they occur. Reported
+tails use add-one corrections and are not adjusted for multiple comparisons.
+
+This null model does not preserve species-specific seasonal constraints,
+climate, abundance, or sampling effort. Its conclusions are conditional on the
+chosen window and duration estimates. It is not evidence of a particular
+interaction mechanism.
+
+## Keep missing surveys distinct from absence
+
+Remove two survey dates without replacing them with zeros:
+
+
+``` r
+missing_dates <- as.Date(c("2026-04-02", "2026-04-04"))
+sparse <- observations[!(observations$date %in% missing_dates), ]
+sparse_analysis <- prepare_phenology(sparse)
+
+sparse_summary <- summarise_phenology_networks(sparse_analysis)
+sparse_summary[c("site", "days_with_presence", "known_empty_days",
+                 "unresolved_days", "coverage_lower", "coverage_upper",
+                 "unknown_fraction")]
+#>    site days_with_presence known_empty_days unresolved_days coverage_lower coverage_upper
+#> 1 north                  8                0               2            0.8            1.0
+#> 2 south                  7                1               2            0.7            0.9
+#>   unknown_fraction
+#> 1              0.2
+#> 2              0.2
+```
+
+The missing days remain in the calendar matrix as `NA`. Coverage's lower bound
+counts confirmed flowering days. Its upper bound additionally includes unresolved
+days that could contain flowering. These are bounds on what the records establish,
+not statistical confidence intervals.
+
+The reference model rejects incomplete daily histories rather than treating
+unknowns as absence. Catch the expected error here so the tutorial remains runnable:
+
+
+``` r
+tryCatch(
+  test_phenological_structure(sparse_analysis, nsim = 19, seed = 42),
+  error = function(e) message(conditionMessage(e))
+)
+#> Null comparisons require complete daily histories; unknown days remain.
+```
+
+## Make interval reconstruction explicit
+
+When continuous flowering between first and last observed presence is justified,
+request the interval method:
+
+
+``` r
+reconstructed <- prepare_phenology(sparse, method = "interval")
+reconstructed_summary <- summarise_phenology_networks(reconstructed)
+reconstructed_summary[c("site", "days_with_presence", "known_empty_days",
+                         "unresolved_days", "coverage_lower", "coverage_upper",
+                         "unknown_fraction")]
+#>    site days_with_presence known_empty_days unresolved_days coverage_lower coverage_upper
+#> 1 north                 10                0               0            1.0            1.0
+#> 2 south                  8                2               0            0.8            0.8
+#>   unknown_fraction
+#> 1                0
+#> 2                0
+```
+
+For species with a positive record, this method fills presence between the first
+and last positive observations and assumes absence outside that span within the
+window. Recorded absence inside the proposed span raises an error. Species
+without positive records retain their original zeros and unknowns.
+
+Reconstruction can change onset, end, and overlap relative to a complete survey.
+In this example, missing April 4 hides the northern species A's true last presence,
+so its reconstructed interval ends earlier than it actually did. Eliminating
+`NA` therefore does not mean the original flowering history has been recovered.
+
+The workflow preserves `observed_presence` separately, so assumptions can be
+audited. Comparing observed-only and reconstructed analyses explores a continuity
+assumption; it does not estimate detection error or endpoint uncertainty.
+
+## Reuse existing ecoTemporalNet functions
+
+The graph in each group is an ordinary igraph object. Existing functions remain
+the source of degree and persistence summaries:
+
+
+``` r
+g <- analysis$groups[[1]]$graph
+calculate_avg_temporal_network_degree(g)
+#> [1] 0.6666667
+calculate_node_temporal_degree(g, mode = "out")
+#>   species degree
+#> A       A      1
+#> B       B      0
+#> C       C      0
+calculate_persistence_metrics(g) # Edge persistence only; node persistence is NA.
+#>   avg_node_persistence avg_edge_persistence
+#> 1                   NA                    2
+```
+
+Supply interval data to `calculate_persistence_metrics(g, species_data)` only
+when species-level continuous intervals are justified. Its graph-only mode avoids
+inferring node durations from incomplete survey spans. Other legacy metrics keep
+their documented weighting, direction, and disconnected-graph behaviour.
+
+
